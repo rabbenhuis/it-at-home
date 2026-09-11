@@ -29,6 +29,7 @@
       - aide
       - debsecan
       - debsums
+      - rkhunter
       - libpam-tmpdir
       - apt-listbugs
       - libpam-pwquality
@@ -281,6 +282,20 @@
     enabled: true
     state: started
   ignore_errors: true
+
+- name: Configure rkhunter defaults
+  ansible.builtin.copy:
+    src: default-rkhunter
+    dest: /etc/default/rkhunter
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Configure rkhunter mirror mode
+  ansible.builtin.lineinfile:
+    path: /etc/rkhunter.conf
+    regexp: "^MIRROR_MODE="
+    line: "MIRROR_MODE=0"
 
 - name: Schedule weekly lynis and debsecan scans
   ansible.builtin.template:
