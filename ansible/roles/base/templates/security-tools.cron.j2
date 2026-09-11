@@ -4,4 +4,6 @@ MAILTO=""
 
 0 5 1 * * root /usr/sbin/lynis --cronjob --quiet --report-file /var/log/lynis-report.html; { echo "Lynis scan - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "Hardening index: $(grep -m1 '^hardening_index=' /var/log/lynis-report.html | cut -d= -f2)"; echo "Warnings: $(grep -c '^warning\[\]=' /var/log/lynis-report.html)"; echo "Suggestions: $(grep -c '^suggestion\[\]=' /var/log/lynis-report.html)"; } | msmtp notify@abbenhuis.net
 
+35 5 1 * * root OUT=$(debsums -s 2>&1) && [ -n "$OUT" ] && { echo "debsums check - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "$OUT"; } | msmtp notify@abbenhuis.net || true
+
 10 3 * * 1 root debsecan --format detail --suite {{ ansible_distribution_release }} --only-fixed >>/var/log/debsecan-cron.log 2>&1 || true
