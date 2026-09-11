@@ -28,6 +28,8 @@
       - lynis
       - aide
       - debsecan
+      - debsums
+      - acct
       - msmtp
       - msmtp-mta
     state: present
@@ -135,6 +137,12 @@
     enabled: true
     state: started
   ignore_errors: true
+
+- name: Enable process accounting (acct)
+  ansible.builtin.command: accton /var/log/account/pacct
+  register: accton_result
+  changed_when: false
+  failed_when: accton_result.rc != 0 and 'already enabled' not in accton_result.stderr
 
 - name: Run lynis security audit (build-time baseline)
   ansible.builtin.command: lynis audit system --quick --no-colors --logfile /var/log/lynis.log
