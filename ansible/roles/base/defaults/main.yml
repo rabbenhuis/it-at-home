@@ -1,0 +1,5 @@
+msmtp_host: ""
+msmtp_port: 587
+msmtp_from: notify@abbenhuis.net
+msmtp_user: ""
+msmtp_password: ""

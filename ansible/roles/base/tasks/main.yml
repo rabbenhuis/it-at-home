@@ -28,6 +28,8 @@
       - lynis
       - aide
       - debsecan
+      - msmtp
+      - msmtp-mta
     state: present
   environment:
     DEBIAN_FRONTEND: noninteractive
@@ -219,6 +221,14 @@
     src: security-tools.cron.j2
     dest: /etc/cron.d/security-tools
     mode: "0644"
+    owner: root
+    group: root
+
+- name: Write msmtp config for lynis report emails
+  ansible.builtin.template:
+    src: msmtprc.j2
+    dest: /etc/msmtprc
+    mode: "0600"
     owner: root
     group: root
 

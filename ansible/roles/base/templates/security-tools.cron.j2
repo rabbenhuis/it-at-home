@@ -2,5 +2,6 @@ SHELL=/bin/bash
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 MAILTO=""
 
-5 3 * * 1 root lynis audit system --no-colors >>/var/log/lynis-cron.log 2>&1 || true
+0 5 1 * * root /usr/sbin/lynis --cronjob --quiet --report-file /var/log/lynis-report.html; { echo "Lynis scan - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "Hardening index: $(grep -m1 '^hardening_index=' /var/log/lynis-report.html | cut -d= -f2)"; echo "Warnings: $(grep -c '^warning\[\]=' /var/log/lynis-report.html)"; echo "Suggestions: $(grep -c '^suggestion\[\]=' /var/log/lynis-report.html)"; } | msmtp notify@abbenhuis.net
+
 10 3 * * 1 root debsecan --format detail --suite {{ ansible_distribution_release }} --only-fixed >>/var/log/debsecan-cron.log 2>&1 || true
