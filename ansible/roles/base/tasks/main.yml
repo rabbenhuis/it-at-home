@@ -56,8 +56,8 @@
     owner: root
     group: root
 
-- name: Reload sysctl settings
-  ansible.builtin.command: sysctl --system
+- name: Apply our sysctl settings
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-hardening.conf
   changed_when: false
   ignore_errors: true
 
@@ -138,6 +138,14 @@
   ansible.builtin.command: lynis audit system --quick --no-colors --logfile /var/log/lynis.log
   changed_when: false
   ignore_errors: true
+
+- name: Create journald config directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
 
 - name: Harden journald
   ansible.builtin.copy:
@@ -246,8 +254,13 @@
 - name: Clean apt caches and remove obsolete packages
   ansible.builtin.apt:
     autoremove: true
-    autoclean: true
     purge: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Clean apt package cache
+  ansible.builtin.apt:
+    autoclean: true
   environment:
     DEBIAN_FRONTEND: noninteractive
 
@@ -263,6 +276,11 @@
     owner: root
     group: root
 
+- name: Restart sshd to apply hardening
+  ansible.builtin.systemd:
+    name: ssh
+    state: restarted
+
 - name: Remove id_ed25519 build key from root
   ansible.posix.authorized_key:
     user: root
@@ -273,19 +291,15 @@
   ansible.builtin.command: passwd -l root
   changed_when: false
 
-- name: Reset machine-id and SSH host keys for clean clones
+- name: Reset machine-id, SSH host keys and first-boot marker for clean clones
   ansible.builtin.shell: |
     rm -f /etc/machine-id /var/lib/dbus/machine-id
     rm -f /etc/ssh/ssh_host_*
+    rm -f /var/lib/firstboot.done
   changed_when: false
 
 - name: Clear shell history and temp files
   ansible.builtin.shell: |
-    rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+    find /tmp /var/tmp -mindepth 1 -maxdepth 1 ! -name 'ansible_*' -exec rm -rf {} + 2>/dev/null || true
     rm -f /root/.bash_history /home/ansible/.bash_history /home/sysadm1n/.bash_history
   changed_when: false
-
-- name: Restart sshd to apply hardening
-  ansible.builtin.systemd:
-    name: ssh
-    state: restarted
