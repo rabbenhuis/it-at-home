@@ -116,7 +116,7 @@
 - name: Authorize richard key for sysadm1n
   ansible.posix.authorized_key:
     user: sysadm1n
-    key: "{{ lookup('file', role_path + '/files/richard.pub') }}"
+    key: "{{ lookup('file', role_path + '/files/id_rsa.pub') }}"
     state: present
 
 - name: Configure fail2ban sshd jail
