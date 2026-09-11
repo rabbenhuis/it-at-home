@@ -74,4 +74,11 @@ resource "proxmox_virtual_environment_container" "build" {
       vm_id = var.base_clone_id
     }
   }
+
+  # Ansible's cleanup intentionally removes the build SSH key from root's
+  # authorized_keys in-guest; don't let Terraform recreate the container to
+  # "fix" that drift.
+  lifecycle {
+    ignore_changes = [initialization[0].user_account]
+  }
 }
