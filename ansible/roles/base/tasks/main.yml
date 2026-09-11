@@ -29,6 +29,9 @@
       - aide
       - debsecan
       - debsums
+      - libpam-tmpdir
+      - apt-listbugs
+      - libpam-pwquality
       - msmtp
       - msmtp-mta
     state: present
@@ -187,6 +190,68 @@
     - { key: UMASK, value: "027" }
     - { key: PASS_MAX_DAYS, value: "90" }
     - { key: PASS_MIN_DAYS, value: "1" }
+    - { key: SHA_CRYPT_MIN_ROUNDS, value: "5000" }
+    - { key: SHA_CRYPT_MAX_ROUNDS, value: "50000" }
+
+- name: Set restrictive umask for shells
+  ansible.builtin.copy:
+    src: 99-umask.sh
+    dest: /etc/profile.d/99-umask.sh
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Disable core dumps via systemd
+  ansible.builtin.copy:
+    src: coredump-hardening.conf
+    dest: /etc/systemd/coredump.conf.d/99-hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Disable core dumps via shell profile
+  ansible.builtin.copy:
+    src: 99-disable-core.sh
+    dest: /etc/profile.d/99-disable-core.sh
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Disable core dumps via limits
+  ansible.builtin.copy:
+    src: limits-disable-core
+    dest: /etc/security/limits.d/99-disable-core.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Enable pam_pwquality password strength checking
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-password
+    regexp: ".*pam_pwquality\\.so.*"
+    line: "password requisite pam_pwquality.so retry=3"
+    insertbefore: "^password\\s+\\[success=1 default=ignore\\].*pam_unix\\.so"
+
+- name: Remove postfix MTA leftovers
+  ansible.builtin.apt:
+    name: postfix
+    state: absent
+    purge: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Harden cron and sshd file permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/crontab, mode: "0600" }
+    - { path: /etc/ssh/sshd_config, mode: "0600" }
+    - { path: /etc/cron.d, mode: "0700" }
+    - { path: /etc/cron.daily, mode: "0700" }
+    - { path: /etc/cron.hourly, mode: "0700" }
+    - { path: /etc/cron.weekly, mode: "0700" }
+    - { path: /etc/cron.monthly, mode: "0700" }
 
 - name: Remove setuid bits from su, mount, umount, wall
   ansible.builtin.shell: |
