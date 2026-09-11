@@ -3,12 +3,15 @@
 # Permit password-based login only for the initial build; keys only afterwards.
 PasswordAuthentication no
 PermitEmptyPasswords no
+KbdInteractiveAuthentication no
+AuthenticationMethods publickey
 
 # Root can only be reached via console / physical access.
 PermitRootLogin no
 
 MaxAuthTries 3
 MaxSessions 2
+LoginGraceTime 30
 AllowTcpForwarding no
 AllowAgentForwarding no
 ClientAliveInterval 300
@@ -20,7 +23,3 @@ Ciphers aes128-ctr,aes192-ctr,aes256-ctr
 HostbasedAuthentication no
 IgnoreRhosts yes
 X11Forwarding no
-
-# Keyboard-interactive is a second password channel; disable to make
-# PasswordAuthentication no actually effective.
-KbdInteractiveAuthentication no

@@ -1,0 +1,6 @@
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+MAILTO=""
+
+5 3 * * 1 root lynis audit system --no-colors >>/var/log/lynis-cron.log 2>&1 || true
+10 3 * * 1 root debsecan --format detail --suite {{ ansible_distribution_release }} --only-fixed >>/var/log/debsecan-cron.log 2>&1 || true

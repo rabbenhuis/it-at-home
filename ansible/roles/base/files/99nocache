@@ -1,0 +1,5 @@
+DPkg::Options {
+  "--path-exclude=/usr/share/doc/*";
+  "--path-exclude=/usr/share/man/*";
+  "--path-include=/usr/share/doc/*/copyright";
+}

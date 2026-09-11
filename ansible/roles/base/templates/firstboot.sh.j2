@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -e
+
+if [[ -f /var/lib/firstboot.done ]]; then
+  exit 0
+fi
+
+systemd-machine-id-setup 2>/dev/null || true
+
+if ! ls /etc/ssh/ssh_host_* >/dev/null 2>&1; then
+  ssh-keygen -A 2>/dev/null || true
+  systemctl restart ssh 2>/dev/null || true
+fi
+
+if command -v aide >/dev/null 2>&1; then
+  aideinit -y >/dev/null 2>&1 || true
+  [[ -f /var/lib/aide/aide.db.new ]] && mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db || true
+fi
+
+if command -v rkhunter >/dev/null 2>&1; then
+  rkhunter --propupd >/dev/null 2>&1 || true
+fi
+
+touch /var/lib/firstboot.done
+systemctl disable --now firstboot.service 2>/dev/null || true
+exit 0
