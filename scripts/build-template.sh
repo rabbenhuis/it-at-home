@@ -52,13 +52,19 @@ curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/lxc/$VMID/stat
 log "Converting container $VMID to template"
 curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/lxc/$VMID/template"
 
+TEMPLATE_NAME="tmpl-debian13-${ROLE}-v${VERSION}"
+log "Renaming template to $TEMPLATE_NAME"
+curl -ksS -X PUT -H "Authorization: $AUTH" \
+  "$API_URL/nodes/$NODE/lxc/$VMID/config" \
+  --data-urlencode "hostname=$TEMPLATE_NAME"
+
 log "Forgetting build resource in terraform state"
 cd "$ROOT"
-STATE_ADDR="module.template_${ROLE}.proxmox_virtual_environment_container.build[0]"
+STATE_ADDR="module.template_${ROLE}[0].proxmox_virtual_environment_container.build"
 if terraform state rm "$STATE_ADDR" >/dev/null 2>&1; then
   log "Removed $STATE_ADDR from state"
 else
   log "WARN: could not state rm $STATE_ADDR (leaving state as-is)"
 fi
 
-log "Done: tmpl-debian13-${ROLE}-v${VERSION} (vmid $VMID)"
+log "Done: $TEMPLATE_NAME (vmid $VMID)"
