@@ -276,10 +276,9 @@
     owner: root
     group: root
 
-- name: Restart sshd to apply hardening
-  ansible.builtin.systemd:
-    name: ssh
-    state: restarted
+- name: Validate sshd configuration
+  ansible.builtin.command: sshd -t
+  changed_when: false
 
 - name: Remove id_ed25519 build key from root
   ansible.posix.authorized_key:
