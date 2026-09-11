@@ -297,6 +297,13 @@
     regexp: "^MIRROR_MODE="
     line: "MIRROR_MODE=0"
 
+- name: Forward debsecan package cron mail to fully-qualified address
+  ansible.builtin.lineinfile:
+    path: /etc/cron.d/debsecan
+    regexp: "^MAILTO="
+    line: "MAILTO=notify@abbenhuis.net"
+  ignore_errors: true
+
 - name: Schedule weekly lynis and debsecan scans
   ansible.builtin.template:
     src: security-tools.cron.j2

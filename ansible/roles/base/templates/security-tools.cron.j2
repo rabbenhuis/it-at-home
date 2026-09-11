@@ -8,4 +8,4 @@ MAILTO=""
 
 20 3 * * 1 root rkhunter --update >/dev/null 2>&1; OUT=$(rkhunter --check --skip-keypress --report-warnings-only 2>/dev/null); [ -n "$OUT" ] && { echo "rkhunter check - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "$OUT"; } | msmtp notify@abbenhuis.net || true
 
-10 3 * * 1 root debsecan --format detail --suite {{ ansible_distribution_release }} --only-fixed >>/var/log/debsecan-cron.log 2>&1 || true
+10 3 * * 1 root OUT=$(debsecan --format detail --suite {{ ansible_distribution_release }} --only-fixed 2>/dev/null); [ -n "$OUT" ] && { echo "debsecan check - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "$OUT"; } | msmtp notify@abbenhuis.net || true
