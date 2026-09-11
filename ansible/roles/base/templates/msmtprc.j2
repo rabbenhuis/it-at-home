@@ -1,9 +1,11 @@
 # Managed by Ansible
 defaults
-auth on
-tls on
+auth {{ msmtp_auth }}
+tls {{ msmtp_tls }}
+{% if msmtp_tls == 'on' %}
 tls_trust_file /etc/ssl/certs/ca-certificates.crt
-logfile /var/log/msmtp.log
+{% endif %}
+logfile {{ msmtp_logfile }}
 
 account default
 host {{ msmtp_host }}

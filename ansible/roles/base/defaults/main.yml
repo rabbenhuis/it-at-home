@@ -1,5 +1,8 @@
-msmtp_host: ""
-msmtp_port: 587
+msmtp_host: mta.abbenhuis.internal
+msmtp_port: 25
 msmtp_from: notify@abbenhuis.net
 msmtp_user: ""
 msmtp_password: ""
+msmtp_auth: off
+msmtp_tls: off
+msmtp_logfile: /var/log/msmtp
