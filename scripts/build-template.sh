@@ -32,7 +32,7 @@ terraform apply -auto-approve \
   -var "template_version=$VERSION" \
   -var "template_vmid=$VMID"
 
-IP=$(terraform output -raw "${ROLE}_ip")
+IP=$(terraform output -raw "${ROLE}_ip" | cut -d/ -f1)
 
 if [[ "$ROLE" == "native" ]]; then
   ANSIBLE_USER=root

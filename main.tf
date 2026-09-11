@@ -109,7 +109,7 @@ module "template_podman" {
   fuse               = false
   keyctl             = false
   cores              = 1
-  memory             = 1024
+  memory             = 512
   swap               = 0
   disk_size          = 16
   disk_datastore     = "local-lvm"
@@ -141,8 +141,8 @@ module "template_docker" {
   nesting            = true
   fuse               = false
   keyctl             = false
-  cores              = 2
-  memory             = 2048
+  cores              = 1
+  memory             = 512
   swap               = 0
   disk_size          = 16
   disk_datastore     = "local-lvm"
