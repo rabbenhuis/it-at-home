@@ -55,15 +55,34 @@
     owner: root
     group: root
 
-- name: Create sysadm1n provisioning user
+- name: Create ansible deploy user
   ansible.builtin.user:
-    name: sysadm1n
-    comment: provisioning user
+    name: ansible
+    comment: deployment user
     groups: sudo
     append: true
     shell: /bin/bash
     create_home: true
     state: present
+
+- name: Create sysadm1n maintenance user
+  ansible.builtin.user:
+    name: sysadm1n
+    comment: maintenance user
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Allow ansible passwordless sudo
+  ansible.builtin.copy:
+    src: sudoers-ansible
+    dest: /etc/sudoers.d/99-ansible
+    mode: "0440"
+    owner: root
+    group: root
+    validate: /usr/sbin/visudo -cf %s
 
 - name: Allow sysadm1n passwordless sudo
   ansible.builtin.copy:
@@ -74,10 +93,16 @@
     group: root
     validate: /usr/sbin/visudo -cf %s
 
-- name: Authorize id_ed25519 for sysadm1n
+- name: Authorize id_ed25519 for ansible user
+  ansible.posix.authorized_key:
+    user: ansible
+    key: "{{ lookup('file', role_path + '/files/id_ed25519.pub') }}"
+    state: present
+
+- name: Authorize richard key for sysadm1n
   ansible.posix.authorized_key:
     user: sysadm1n
-    key: "{{ lookup('file', role_path + '/files/id_ed25519.pub') }}"
+    key: "{{ lookup('file', role_path + '/files/richard.pub') }}"
     state: present
 
 - name: Configure fail2ban sshd jail
@@ -125,7 +150,7 @@
 - name: Clear shell history and temp files
   ansible.builtin.shell: |
     rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
-    rm -f /root/.bash_history /home/sysadm1n/.bash_history
+    rm -f /root/.bash_history /home/ansible/.bash_history /home/sysadm1n/.bash_history
   changed_when: false
 
 - name: Restart sshd to apply hardening

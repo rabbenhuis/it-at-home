@@ -38,7 +38,7 @@ if [[ "$ROLE" == "native" ]]; then
   ANSIBLE_USER=root
   PLAY="playbooks/harden.yml"
 else
-  ANSIBLE_USER=sysadm1n
+  ANSIBLE_USER=ansible
   PLAY="playbooks/${ROLE}.yml"
 fi
 
