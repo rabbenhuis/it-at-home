@@ -9,7 +9,6 @@ systemd-machine-id-setup 2>/dev/null || true
 
 if ! ls /etc/ssh/ssh_host_* >/dev/null 2>&1; then
   ssh-keygen -A 2>/dev/null || true
-  systemctl restart ssh 2>/dev/null || true
 fi
 
 if command -v aide >/dev/null 2>&1; then
