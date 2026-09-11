@@ -1,3 +1,5 @@
 Unattended-Upgrade::Automatic-Reboot "false";
 Unattended-Upgrade::Remove-Unused-Dependencies "true";
 Unattended-Upgrade::Automatic-Reboot-Time "04:00";
+Unattended-Upgrade::Mail "notify@abbenhuis.net";
+Unattended-Upgrade::MailReport "on-change";

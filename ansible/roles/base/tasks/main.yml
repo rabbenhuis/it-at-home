@@ -232,6 +232,22 @@
     owner: root
     group: root
 
+- name: Create msmtp logfile
+  ansible.builtin.file:
+    path: /var/log/msmtp
+    state: touch
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Forward system cron mail to a fully-qualified address
+  ansible.builtin.lineinfile:
+    path: /etc/crontab
+    regexp: "^MAILTO="
+    line: "MAILTO=notify@abbenhuis.net"
+    insertafter: "^PATH="
+    create: true
+
 - name: Configure aide exclusions for containers
   ansible.builtin.template:
     src: aide-99-container.conf.j2
