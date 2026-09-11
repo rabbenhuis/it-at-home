@@ -296,6 +296,7 @@
     rm -f /etc/machine-id /var/lib/dbus/machine-id
     rm -f /etc/ssh/ssh_host_*
     rm -f /var/lib/firstboot.done
+    rm -f /var/lib/aide/aide.db /var/lib/aide/aide.db.new
   changed_when: false
 
 - name: Clear shell history and temp files
