@@ -44,6 +44,25 @@ fi
 
 log "Provisioning with ansible (role=$ROLE host=$IP user=$ANSIBLE_USER)"
 cd "$ROOT/ansible"
+
+log "Waiting for SSH to become ready on $IP..."
+ssh-keygen -R "$IP" >/dev/null 2>&1 || true
+READY=0
+for i in $(seq 1 120); do
+  if timeout 3 bash -c ">/dev/tcp/$IP/22" 2>/dev/null && \
+     timeout 6 ssh -o BatchMode=yes -o ConnectTimeout=4 \
+       -o StrictHostKeyChecking=accept-new "$ANSIBLE_USER@$IP" true >/dev/null 2>&1; then
+    READY=1
+    log "SSH ready after ~$((i * 5))s"
+    break
+  fi
+  sleep 5
+done
+if [[ "$READY" -ne 1 ]]; then
+  echo "ERROR: SSH to $IP did not become ready within ~10 minutes" >&2
+  exit 1
+fi
+
 ~/.local/bin/ansible-playbook -i "${IP}," -u "$ANSIBLE_USER" -b "$PLAY"
 
 log "Stopping container $VMID"
