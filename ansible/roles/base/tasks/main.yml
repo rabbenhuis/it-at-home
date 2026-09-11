@@ -1,0 +1,134 @@
+---
+- name: Update apt cache and full-upgrade
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: full
+    autoremove: true
+    autoclean: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install hardening packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - wget
+      - gnupg
+      - sudo
+      - unattended-upgrades
+      - apt-listchanges
+      - fail2ban
+      - lynis
+      - aide
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Configure unattended-upgrades
+  ansible.builtin.copy:
+    src: 20auto-upgrades
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Apply sysctl hardening
+  ansible.builtin.template:
+    src: sysctl-99-hardening.conf.j2
+    dest: /etc/sysctl.d/99-hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Reload sysctl settings
+  ansible.builtin.command: sysctl --system
+  changed_when: false
+  ignore_errors: true
+
+- name: Write sshd hardening drop-in
+  ansible.builtin.template:
+    src: sshd-99-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Create sysadm1n provisioning user
+  ansible.builtin.user:
+    name: sysadm1n
+    comment: provisioning user
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Allow sysadm1n passwordless sudo
+  ansible.builtin.copy:
+    src: sudoers-sysadm1n
+    dest: /etc/sudoers.d/99-sysadm1n
+    mode: "0440"
+    owner: root
+    group: root
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Authorize id_ed25519 for sysadm1n
+  ansible.posix.authorized_key:
+    user: sysadm1n
+    key: "{{ lookup('file', role_path + '/files/id_ed25519.pub') }}"
+    state: present
+
+- name: Configure fail2ban sshd jail
+  ansible.builtin.copy:
+    src: fail2ban-jail.local
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Enable and start fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    enabled: true
+    state: started
+  ignore_errors: true
+
+- name: Run lynis security audit
+  ansible.builtin.command: lynis audit system --quick --no-colors --logfile /var/log/lynis.log
+  changed_when: false
+  ignore_errors: true
+
+- name: Clean apt caches and remove obsolete packages
+  ansible.builtin.apt:
+    autoremove: true
+    autoclean: true
+    purge: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Remove id_ed25519 build key from root
+  ansible.posix.authorized_key:
+    user: root
+    key: "{{ lookup('file', role_path + '/files/id_ed25519.pub') }}"
+    state: absent
+
+- name: Reset machine-id for clean clones
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/machine-id
+    - /var/lib/dbus/machine-id
+
+- name: Clear shell history and temp files
+  ansible.builtin.shell: |
+    rm -rf /tmp/* /var/tmp/* 2>/dev/null || true
+    rm -f /root/.bash_history /home/sysadm1n/.bash_history
+  changed_when: false
+
+- name: Restart sshd to apply hardening
+  ansible.builtin.systemd:
+    name: ssh
+    state: restarted

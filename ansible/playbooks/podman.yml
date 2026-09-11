@@ -1,0 +1,7 @@
+---
+- name: Build podman LXC template
+  hosts: all
+  become: true
+  roles:
+    - role: base
+    - role: podman

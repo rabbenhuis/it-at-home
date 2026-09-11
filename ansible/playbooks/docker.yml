@@ -1,0 +1,7 @@
+---
+- name: Build docker LXC template
+  hosts: all
+  become: true
+  roles:
+    - role: base
+    - role: docker

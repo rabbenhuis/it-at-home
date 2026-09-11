@@ -1,0 +1,10 @@
+---
+- name: Install podman
+  ansible.builtin.apt:
+    name:
+      - podman
+      - podman-compose
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive

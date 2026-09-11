@@ -1,0 +1,6 @@
+---
+- name: Harden LXC template (base)
+  hosts: all
+  become: true
+  roles:
+    - role: base
