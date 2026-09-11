@@ -202,6 +202,14 @@
     owner: root
     group: root
 
+- name: Create systemd coredump config directory
+  ansible.builtin.file:
+    path: /etc/systemd/coredump.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
 - name: Disable core dumps via systemd
   ansible.builtin.copy:
     src: coredump-hardening.conf
