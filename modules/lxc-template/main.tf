@@ -43,8 +43,14 @@ resource "proxmox_virtual_environment_container" "build" {
       }
     }
 
-    user_account {
-      keys = var.ssh_keys
+    # SSH keys can only be injected when creating from an upstream template
+    # (PVE's clone API rejects ssh-public-keys). Clones inherit the ansible and
+    # sysadm1n users baked into the source template, so no key injection needed.
+    dynamic "user_account" {
+      for_each = var.base_template_file != "" ? [1] : []
+      content {
+        keys = var.ssh_keys
+      }
     }
   }
 

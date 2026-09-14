@@ -108,8 +108,8 @@ module "template_podman" {
   nesting            = true
   fuse               = false
   keyctl             = false
-  cores              = 1
-  memory             = 512
+  cores              = 2
+  memory             = 1024
   swap               = 0
   disk_size          = 16
   disk_datastore     = "local-lvm"
