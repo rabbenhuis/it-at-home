@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Build a versioned LXC template:
-#   1. terraform apply (creates the build container from upstream or a clone)
+# Build a versioned template (LXC or VM):
+#   1. terraform apply (creates the build instance from upstream / a clone / cloud image)
 #   2. ansible-playbook (provisions + hardens it)
-#   3. stop container, convert to template via the Proxmox API
+#   3. stop instance, convert to template via the Proxmox API
 #   4. terraform state rm (the template is now the artifact, not the build resource)
+#
+# Roles: native (LXC, root SSH), podman/docker (LXC, ansible SSH),
+#        vm (QEMU, debian SSH via cloud-init).
 #
 # Prereqs (env): TF_VAR_pm_api_token_id, TF_VAR_pm_api_token_secret
 # Usage: ./build-template.sh <role> <version> <vmid> <node>
@@ -25,6 +28,27 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 
+case "$ROLE" in
+  native)
+    ANSIBLE_USER=root
+    PLAY="playbooks/harden.yml"
+    API_PATH="lxc"; RENAME_PARAM="hostname"
+    STATE_ADDR="module.template_native[0].proxmox_virtual_environment_container.build"
+    ;;
+  vm)
+    ANSIBLE_USER=debian
+    PLAY="playbooks/vm.yml"
+    API_PATH="qemu"; RENAME_PARAM="name"
+    STATE_ADDR="module.template_vm[0].proxmox_virtual_environment_vm.build"
+    ;;
+  *)
+    ANSIBLE_USER=ansible
+    PLAY="playbooks/${ROLE}.yml"
+    API_PATH="lxc"; RENAME_PARAM="hostname"
+    STATE_ADDR="module.template_${ROLE}[0].proxmox_virtual_environment_container.build"
+    ;;
+esac
+
 log "Applying terraform (role=$ROLE version=$VERSION vmid=$VMID)"
 cd "$ROOT"
 terraform apply -auto-approve \
@@ -33,14 +57,6 @@ terraform apply -auto-approve \
   -var "template_vmid=$VMID"
 
 IP=$(terraform output -raw "${ROLE}_ip" | cut -d/ -f1)
-
-if [[ "$ROLE" == "native" ]]; then
-  ANSIBLE_USER=root
-  PLAY="playbooks/harden.yml"
-else
-  ANSIBLE_USER=ansible
-  PLAY="playbooks/${ROLE}.yml"
-fi
 
 log "Provisioning with ansible (role=$ROLE host=$IP user=$ANSIBLE_USER)"
 cd "$ROOT/ansible"
@@ -65,21 +81,20 @@ fi
 
 ~/.local/bin/ansible-playbook -i "${IP}," -u "$ANSIBLE_USER" -b "$PLAY"
 
-log "Stopping container $VMID"
-curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/lxc/$VMID/status/stop"
+log "Stopping $API_PATH instance $VMID"
+curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/$API_PATH/$VMID/status/stop"
 
-log "Converting container $VMID to template"
-curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/lxc/$VMID/template"
+log "Converting $API_PATH instance $VMID to template"
+curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/$API_PATH/$VMID/template"
 
 TEMPLATE_NAME="tmpl-debian13-${ROLE}-v${VERSION}"
 log "Renaming template to $TEMPLATE_NAME"
 curl -ksS -X PUT -H "Authorization: $AUTH" \
-  "$API_URL/nodes/$NODE/lxc/$VMID/config" \
-  --data-urlencode "hostname=$TEMPLATE_NAME"
+  "$API_URL/nodes/$NODE/$API_PATH/$VMID/config" \
+  --data-urlencode "$RENAME_PARAM=$TEMPLATE_NAME"
 
 log "Forgetting build resource in terraform state"
 cd "$ROOT"
-STATE_ADDR="module.template_${ROLE}[0].proxmox_virtual_environment_container.build"
 if terraform state rm "$STATE_ADDR" >/dev/null 2>&1; then
   log "Removed $STATE_ADDR from state"
 else

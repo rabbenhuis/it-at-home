@@ -1,0 +1,7 @@
+---
+- name: Build debian13 VM template
+  hosts: all
+  become: true
+  roles:
+    - role: base
+    - role: vm

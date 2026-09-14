@@ -19,7 +19,7 @@ variable "pm_api_token_secret" {
 
 # Selected per build by scripts/build-template.sh
 variable "template_role" {
-  description = "Which template to build: native, podman or docker"
+  description = "Which template to build: native, podman, docker or vm"
   type        = string
   default     = "native"
 }
@@ -44,6 +44,13 @@ provider "proxmox" {
   endpoint  = "https://bm-pve-prd-01.abbenhuis.internal:8006/"
   api_token = "${var.pm_api_token_id}=${var.pm_api_token_secret}"
   insecure  = true
+}
+
+resource "proxmox_download_file" "debian13_cloud" {
+  content_type = "iso"
+  datastore_id = "local"
+  node_name    = "bm-pve-prd-01"
+  url          = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
 }
 
 locals {
@@ -152,6 +159,32 @@ module "template_docker" {
   ostype             = "debian"
 }
 
+module "template_vm" {
+  source = "./modules/vm-template"
+
+  count = var.template_role == "vm" ? 1 : 0
+
+  name                = "debian13-vm"
+  template_version    = var.template_version
+  vmid                = var.template_vmid
+  node_name           = "bm-pve-prd-01"
+  hostname            = "tmpl-debian13-vm-build"
+  cloud_image_file_id = proxmox_download_file.debian13_cloud.id
+  nameserver          = "192.168.70.1"
+  searchdomain        = "abbenhuis.internal"
+  ip                  = "192.168.70.93/24"
+  gateway             = "192.168.70.1"
+  ssh_keys            = local.ssh_keys
+  cores               = 2
+  memory              = 2048
+  disk_size           = 20
+  disk_datastore      = "local-lvm"
+  bridge              = "vmbr0"
+  vlan_id             = 70
+  firewall            = true
+  ostype              = "l26"
+}
+
 output "native_ip" {
   value = try(module.template_native[0].ip, "")
 }
@@ -162,4 +195,8 @@ output "podman_ip" {
 
 output "docker_ip" {
   value = try(module.template_docker[0].ip, "")
+}
+
+output "vm_ip" {
+  value = try(module.template_vm[0].ip, "")
 }

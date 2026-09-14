@@ -1,0 +1,26 @@
+---
+- name: Install qemu-guest-agent
+  ansible.builtin.apt:
+    name: qemu-guest-agent
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install acct (process accounting - works in a full VM)
+  ansible.builtin.apt:
+    name: acct
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Enable process accounting
+  ansible.builtin.command: accton /var/log/account/pacct
+  register: accton_result
+  changed_when: false
+  failed_when: accton_result.rc != 0 and 'already enabled' not in accton_result.stderr
+
+- name: Enable and start qemu-guest-agent
+  ansible.builtin.systemd:
+    name: qemu-guest-agent
+    enabled: true
+    state: started
