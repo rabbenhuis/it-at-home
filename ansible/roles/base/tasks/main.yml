@@ -318,7 +318,6 @@
     regexp: "^MAILTO="
     line: "MAILTO=notify@abbenhuis.net"
   ignore_errors: true
-  tags: [mail]
 
 - name: Schedule weekly lynis and debsecan scans
   ansible.builtin.template:
@@ -327,7 +326,6 @@
     mode: "0644"
     owner: root
     group: root
-  tags: [mail]
 
 - name: Install send-mail helper (hostname-derived envelope-from)
   ansible.builtin.copy:
@@ -336,7 +334,6 @@
     mode: "0700"
     owner: root
     group: root
-  tags: [mail]
 
 - name: Write msmtp config for lynis report emails
   ansible.builtin.template:
@@ -345,7 +342,6 @@
     mode: "0600"
     owner: root
     group: root
-  tags: [mail]
 
 - name: Create msmtp logfile
   ansible.builtin.file:
@@ -354,7 +350,6 @@
     mode: "0600"
     owner: root
     group: root
-  tags: [mail]
 
 - name: Forward system cron mail to a fully-qualified address
   ansible.builtin.lineinfile:
@@ -363,7 +358,6 @@
     line: "MAILTO=notify@abbenhuis.net"
     insertafter: "^PATH="
     create: true
-  tags: [mail]
 
 - name: Configure aide exclusions for containers
   ansible.builtin.template:
