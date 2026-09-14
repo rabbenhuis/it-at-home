@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds versioned templates: `tmpl-debian13-native-v1` (9000), then `-podman-v1` (9010) and `-docker-v1` (9020) cloned from the native one, plus a QEMU `-vm-v1` (9200) built from the Debian 13 cloud image via cloud-init.
+Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds versioned templates on two nodes selected by the `target` variable (`pve1` amd64, `pve2` arm64): `tmpl-debian13-native-v1` (9000), then `-podman-v1` (9010) and `-docker-v1` (9020) cloned from the native one, plus a QEMU `-vm-v1` (9200) from the Debian 13 cloud image via cloud-init.
 
 ## Credentials (blocker)
 
@@ -10,7 +10,9 @@ Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds vers
 
 ## One-shot build
 
-`./scripts/build-template.sh <role> <version> <vmid> [node]` runs: `terraform apply` → SSH-wait (~10 min, covers clone firstboot/aideinit and VM cloud-init) → `ansible-playbook` → stop → convert to template (API `POST /lxc/<vmid>/template`, VM uses `/qemu/`) → rename (API `PUT .../config`; `hostname=` for LXC, `name=` for VM) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
+`./scripts/build-template.sh <role> <version> <vmid> [target]` runs: `terraform apply` (`target=pve1|pve2` selects endpoint/node/arch/storage/images) → SSH-wait (~10 min, covers clone firstboot/aideinit and VM cloud-init) → `ansible-playbook` → stop → convert to template (API `POST /lxc/<vmid>/template`, VM uses `/qemu/`) → rename (API `PUT .../config`; `hostname=` for LXC, `name=` for VM) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
+
+Per-node settings (endpoint, node name, architecture, disk/image datastores, bridge, VLAN, IPs, image file ids) live in the `nodes` locals map in `main.tf`. Base images are **static references** (not downloaded by Terraform) — provision each node's `nas` once; the pve2 (arm64) filenames are placeholders to confirm via `pveam available | grep arm64`.
 
 ## Ansible specifics
 
@@ -27,7 +29,7 @@ Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds vers
 - `Protocol 2` is invalid on OpenSSH 10 (Debian 13) — omitted. `auditd` and `acct` are absent from the LXC base because kernel auditing/accounting can't run in an unprivileged LXC; `acct` **is** installed by the `vm` role (works in a full VM).
 - Module input is `template_version`, not `version` (`version` is a reserved module meta-argument).
 - SSH host-key / machine-id / aide-db / firstboot.done are stripped in cleanup so templates ship clean; a `firstboot.service` regenerates them per clone. `firstboot.sh` must **not** call `systemctl restart ssh` (caused a boot deadlock).
-- The VM template uses a `proxmox_download_file` cloud image (always tracked in state) and `modules/vm-template`; `initialization.user_account.username = "debian"`.
+- The VM template uses a static cloud image file id in the `nodes` map (`modules/vm-template`); `initialization.user_account.username = "debian"`. The LXC ostemplate is likewise a static `nas:vztmpl/...` reference per node. Both images are provisioned manually per node (the `proxmox_download_file` resources were dropped because target-switching would destroy/redownload them).
 
 ## Layout
 

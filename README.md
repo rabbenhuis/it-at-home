@@ -67,8 +67,11 @@ scripts/build-template.sh      # full pipeline: apply -> provision -> convert
 `scripts/build-template.sh` does everything in one command:
 
 ```bash
-./scripts/build-template.sh <role> <version> <vmid> [node]
+./scripts/build-template.sh <role> <version> <vmid> [target]
 ```
+
+`target` is `pve1` (default, amd64) or `pve2` (arm64); it selects the endpoint,
+node, architecture, storage and image files from the `nodes` map in `main.tf`.
 
 It will:
 1. `terraform apply` the selected module (`native`, `podman`, `docker`, or `vm`)
@@ -84,6 +87,8 @@ Example:
 ./scripts/build-template.sh podman 1 9010
 ./scripts/build-template.sh docker 1 9020
 ./scripts/build-template.sh vm 1 9200
+./scripts/build-template.sh native 1 9000 pve2
+./scripts/build-template.sh vm 1 9200 pve2
 ```
 
 `native` connects over SSH as `root`; `podman`/`docker` connect as the `ansible`
