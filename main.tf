@@ -46,14 +46,6 @@ provider "proxmox" {
   insecure  = true
 }
 
-resource "proxmox_download_file" "debian13_cloud" {
-  content_type = "import"
-  datastore_id = "nas"
-  node_name    = "bm-pve-prd-01"
-  file_name    = "debian-13-genericcloud-amd64.qcow2"
-  url          = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
-}
-
 locals {
   ssh_keys = [
     "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAgEAqa2AH3zrgqR4DvUVgEhqdts3yFHvwsPw2KM3x8OiX3MYttUn9Hp64cTTdhbCIQ+waBTHH9ccJq4E0NEwQZ5HRyjO7jeIjDDGN2VDzWYUaZYgQFmeOobYfOhAXnR6As3uzTeGMMix8aQv8ll2g0h3pXNorPwuDn9hf3A9XpLiNacf/VrNdWZI9QA0Lq5NPWb2aFrgwyqn+DCNCdzUt/fIliTyB69QWXEnadeZAT4S8arzyFklzSrvkc1kVogqL8pwyg603u+RgvXfGjKBRzUT2rfCOAGPRUO5uGoQOBJ9zJrwZw+kzbQTv2KhtmAriKMWnC8M2olM5c9J00gTY+3AgXvdSCP9OFWe1hj+IqdLoltSfdkqRgUk4+xXLpYklQWPWSFOpOzDWZ9Cgtn46QWJ1jZY5obxe6GSDbswA4AvawbM2GqJT6MIWt30j0Xpp6O0icPK7OVWNayHrK//UbmdsW2xvdS5WNMYP1CPKKHkjz8STCH264KOHTKqOsXHHKChEA0faK/DL1bfA591LgXCV/np3QJHjltecLMVlNS3f+ewdrd/UTZENpnj1H/9YB4SwCWWWavOGeZcUV6Jn4wAfWjRXnhXovKJDr74qo9L32MXeoE51trQpDvrXo5LSz3krEhRxgXHRFS3riO5Pt2jhARedFG1KThrfVIQaO5PMDU= richard@abbenhuis.net",
@@ -170,7 +162,7 @@ module "template_vm" {
   vmid                = var.template_vmid
   node_name           = "bm-pve-prd-01"
   hostname            = "tmpl-debian13-vm-build"
-  cloud_image_file_id = proxmox_download_file.debian13_cloud.id
+  cloud_image_file_id = "nas:import/debian-13-genericcloud-amd64.qcow2"
   nameserver          = "192.168.70.1"
   searchdomain        = "abbenhuis.internal"
   ip                  = "192.168.70.93/24"
