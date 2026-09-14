@@ -105,12 +105,12 @@ module "template_podman" {
   gateway            = "192.168.70.1"
   ssh_keys           = local.ssh_keys
   unprivileged       = true
+  swap               = 0
   nesting            = true
   fuse               = false
   keyctl             = false
   cores              = 2
   memory             = 1024
-  swap               = 0
   disk_size          = 16
   disk_datastore     = "local-lvm"
   bridge             = "vmbr0"

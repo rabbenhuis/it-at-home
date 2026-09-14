@@ -31,7 +31,6 @@
       - debsums
       - rkhunter
       - libpam-tmpdir
-      - apt-listbugs
       - libpam-pwquality
       - msmtp
       - msmtp-mta
@@ -244,6 +243,14 @@
 - name: Remove postfix MTA leftovers
   ansible.builtin.apt:
     name: postfix
+    state: absent
+    purge: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Remove apt-listbugs (fails closed on grave bugs, blocks unattended installs)
+  ansible.builtin.apt:
+    name: apt-listbugs
     state: absent
     purge: true
   environment:
