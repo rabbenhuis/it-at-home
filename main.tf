@@ -54,6 +54,14 @@ resource "proxmox_download_file" "debian13_cloud" {
   url          = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
 }
 
+resource "proxmox_download_file" "debian13_standard" {
+  content_type = "vztmpl"
+  datastore_id = "nas"
+  node_name    = "bm-pve-prd-01"
+  file_name    = "debian-13-standard_13.6-1_amd64.tar.zst"
+  url          = "https://download.proxmox.com/images/system/debian-13-standard_13.6-1_amd64.tar.zst"
+}
+
 locals {
   ssh_keys = [
     "ssh-rsa AAAAB3NzaC1yc2EAAAABJQAAAgEAqa2AH3zrgqR4DvUVgEhqdts3yFHvwsPw2KM3x8OiX3MYttUn9Hp64cTTdhbCIQ+waBTHH9ccJq4E0NEwQZ5HRyjO7jeIjDDGN2VDzWYUaZYgQFmeOobYfOhAXnR6As3uzTeGMMix8aQv8ll2g0h3pXNorPwuDn9hf3A9XpLiNacf/VrNdWZI9QA0Lq5NPWb2aFrgwyqn+DCNCdzUt/fIliTyB69QWXEnadeZAT4S8arzyFklzSrvkc1kVogqL8pwyg603u+RgvXfGjKBRzUT2rfCOAGPRUO5uGoQOBJ9zJrwZw+kzbQTv2KhtmAriKMWnC8M2olM5c9J00gTY+3AgXvdSCP9OFWe1hj+IqdLoltSfdkqRgUk4+xXLpYklQWPWSFOpOzDWZ9Cgtn46QWJ1jZY5obxe6GSDbswA4AvawbM2GqJT6MIWt30j0Xpp6O0icPK7OVWNayHrK//UbmdsW2xvdS5WNMYP1CPKKHkjz8STCH264KOHTKqOsXHHKChEA0faK/DL1bfA591LgXCV/np3QJHjltecLMVlNS3f+ewdrd/UTZENpnj1H/9YB4SwCWWWavOGeZcUV6Jn4wAfWjRXnhXovKJDr74qo9L32MXeoE51trQpDvrXo5LSz3krEhRxgXHRFS3riO5Pt2jhARedFG1KThrfVIQaO5PMDU= richard@abbenhuis.net",
@@ -71,7 +79,7 @@ module "template_native" {
   vmid               = var.template_vmid
   node_name          = "bm-pve-prd-01"
   role               = "native"
-  base_template_file = "nas:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
+  base_template_file = proxmox_download_file.debian13_standard.id
   base_clone_id      = 0
   hostname           = "tmpl-debian13-native-build.abbenhuis.internal"
   nameserver         = "192.168.70.1"
