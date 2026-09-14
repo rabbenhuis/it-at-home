@@ -422,6 +422,6 @@
 
 - name: Clear shell history and temp files
   ansible.builtin.shell: |
-    find /tmp /var/tmp -mindepth 1 -maxdepth 1 ! -name 'ansible_*' -exec rm -rf {} + 2>/dev/null || true
+    find /tmp /var/tmp -mindepth 1 \( -path '/tmp/user' -o -name 'ansible_*' \) -prune -o -exec rm -rf {} + 2>/dev/null || true
     rm -f /root/.bash_history /home/ansible/.bash_history /home/sysadm1n/.bash_history
   changed_when: false
