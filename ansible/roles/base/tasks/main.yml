@@ -398,6 +398,11 @@
     owner: root
     group: root
 
+- name: Ensure SSH host keys exist for validation
+  ansible.builtin.shell: |
+    ls /etc/ssh/ssh_host_* >/dev/null 2>&1 || ssh-keygen -A
+  changed_when: false
+
 - name: Validate sshd configuration
   ansible.builtin.command: sshd -t
   changed_when: false
