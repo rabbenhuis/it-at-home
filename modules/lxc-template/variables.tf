@@ -123,3 +123,8 @@ variable "ostype" {
   type    = string
   default = "debian"
 }
+
+variable "architecture" {
+  type    = string
+  default = "amd64"
+}

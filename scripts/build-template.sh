@@ -13,15 +13,21 @@ set -euo pipefail
 # Prereqs (env): TF_VAR_pm_api_token_id, TF_VAR_pm_api_token_secret
 # Usage: ./build-template.sh <role> <version> <vmid> <node>
 
-ROLE="${1:?usage: build-template.sh <role> <version> <vmid> <node>}"
+ROLE="${1:?usage: build-template.sh <role> <version> <vmid> [target]}"
 VERSION="${2:?}"
 VMID="${3:?}"
-NODE="${4:-bm-pve-prd-01}"
+TARGET="${4:-pve1}"
 
 : "${TF_VAR_pm_api_token_id:?set TF_VAR_pm_api_token_id}"
 : "${TF_VAR_pm_api_token_secret:?set TF_VAR_pm_api_token_secret}"
 
-API_URL="https://bm-pve-prd-01.abbenhuis.internal:8006/api2/json"
+case "$TARGET" in
+  pve1) NODE="bm-pve-prd-01"; API_HOST="bm-pve-prd-01.abbenhuis.internal" ;;
+  pve2) NODE="bm-pve-prd-02"; API_HOST="bm-pve-prd-02.abbenhuis.internal" ;;
+  *) echo "ERROR: unknown target '$TARGET' (expected pve1 or pve2)" >&2; exit 1 ;;
+esac
+
+API_URL="https://${API_HOST}:8006/api2/json"
 AUTH="PVEAPIToken=${TF_VAR_pm_api_token_id}=${TF_VAR_pm_api_token_secret}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,9 +55,10 @@ case "$ROLE" in
     ;;
 esac
 
-log "Applying terraform (role=$ROLE version=$VERSION vmid=$VMID)"
+log "Applying terraform (target=$TARGET role=$ROLE version=$VERSION vmid=$VMID node=$NODE)"
 cd "$ROOT"
 terraform apply -auto-approve \
+  -var "target=$TARGET" \
   -var "template_role=$ROLE" \
   -var "template_version=$VERSION" \
   -var "template_vmid=$VMID"

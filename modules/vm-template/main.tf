@@ -19,7 +19,8 @@ resource "proxmox_virtual_environment_vm" "build" {
   }
 
   cpu {
-    cores = var.cores
+    architecture = var.architecture
+    cores        = var.cores
   }
 
   memory {
