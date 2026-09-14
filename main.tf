@@ -50,7 +50,7 @@ resource "proxmox_download_file" "debian13_cloud" {
   content_type = "import"
   datastore_id = "nas"
   node_name    = "bm-pve-prd-01"
-  url          = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-generic-amd64.qcow2"
+  url          = "https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-amd64.qcow2"
 }
 
 locals {
