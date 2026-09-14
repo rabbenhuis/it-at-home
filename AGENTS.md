@@ -1,6 +1,6 @@
 # AGENTS.md
 
-Proxmox LXC template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds versioned templates: `tmpl-debian13-native-v1` (9000), then `-podman-v1` (9010) and `-docker-v1` (9020) cloned from the native one.
+Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds versioned templates: `tmpl-debian13-native-v1` (9000), then `-podman-v1` (9010) and `-docker-v1` (9020) cloned from the native one, plus a QEMU `-vm-v1` (9200) built from the Debian 13 cloud image via cloud-init.
 
 ## Credentials (blocker)
 
@@ -10,12 +10,12 @@ Proxmox LXC template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds 
 
 ## One-shot build
 
-`./scripts/build-template.sh <role> <version> <vmid> [node]` runs: `terraform apply` → SSH-wait (~10 min, covers clone firstboot/aideinit) → `ansible-playbook` → stop → convert to template (API `POST /lxc/<vmid>/template`) → rename (API `PUT .../config` `hostname=`) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
+`./scripts/build-template.sh <role> <version> <vmid> [node]` runs: `terraform apply` → SSH-wait (~10 min, covers clone firstboot/aideinit and VM cloud-init) → `ansible-playbook` → stop → convert to template (API `POST /lxc/<vmid>/template`, VM uses `/qemu/`) → rename (API `PUT .../config`; `hostname=` for LXC, `name=` for VM) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
 
 ## Ansible specifics
 
 - Runs via pipx: **`~/.local/bin/ansible-playbook`** (system `ansible` is not installed). Run from the `ansible/` dir so `ansible.cfg` applies.
-- Playbooks target `hosts: all`; invoke with inline inventory `-i <IP>,`. SSH user: `native` → `root`, `podman`/`docker` → `ansible` (that user + key are baked into the native template; also `sysadm1n` for human maintenance). Root login is disabled; `AllowUsers ansible sysadm1n`.
+- Playbooks target `hosts: all`; invoke with inline inventory `-i <IP>,`. SSH user: `native` → `root`, `podman`/`docker` → `ansible` (that user + key are baked into the native template; also `sysadm1n` for human maintenance), `vm` → `debian` (cloud-init user from the cloud image, key injected via `user_account`). Root login is disabled; `AllowUsers ansible sysadm1n`.
 - Syntax check only: `~/.local/bin/ansible-playbook --syntax-check playbooks/harden.yml` (from `ansible/`).
 
 ## Hard-won gotchas (do not "fix" these back)
@@ -24,14 +24,15 @@ Proxmox LXC template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds 
 - **Never `rm -rf /tmp/*`** in an Ansible task — it deletes the running module payload. Use `find /tmp /var/tmp -mindepth 1 \( -path '/tmp/user' -o -name 'ansible_*' \) -prune -o -exec rm -rf {} +`.
 - **Do not set SSH keys when cloning** (`user_account`): PVE's clone API rejects `ssh-public-keys` (HTTP 400). The module only injects keys for create-from-upstream; clones inherit `ansible`/`sysadm1n`. Keep it that way.
 - **apt-listbugs was removed** — it fails closed on grave bugs and broke unattended podman installs. Don't re-add.
-- `Protocol 2` is invalid on OpenSSH 10 (Debian 13) — omitted. `auditd` and `acct` are absent because kernel auditing/accounting can't run in an unprivileged LXC.
+- `Protocol 2` is invalid on OpenSSH 10 (Debian 13) — omitted. `auditd` and `acct` are absent from the LXC base because kernel auditing/accounting can't run in an unprivileged LXC; `acct` **is** installed by the `vm` role (works in a full VM).
 - Module input is `template_version`, not `version` (`version` is a reserved module meta-argument).
 - SSH host-key / machine-id / aide-db / firstboot.done are stripped in cleanup so templates ship clean; a `firstboot.service` regenerates them per clone. `firstboot.sh` must **not** call `systemctl restart ssh` (caused a boot deadlock).
+- The VM template uses a `proxmox_download_file` cloud image (always tracked in state) and `modules/vm-template`; `initialization.user_account.username = "debian"`.
 
 ## Layout
 
-- `modules/lxc-template/` — reusable container resource; `base_template_file` vs `base_clone_id` select create-vs-clone.
-- `ansible/roles/base/` — shared hardening (packages, sshd drop-in, users, sysctl, cron email jobs). `ansible/roles/{podman,docker}/` — runtime installs.
+- `modules/lxc-template/` — reusable container resource; `base_template_file` vs `base_clone_id` select create-vs-clone. `modules/vm-template/` — QEMU VM from a cloud image (cloud-init).
+- `ansible/roles/base/` — shared hardening (packages, sshd drop-in, users, sysctl, cron email jobs). `ansible/roles/{podman,docker}/` — runtime installs. `ansible/roles/vm/` — qemu-guest-agent + acct (VM only).
 - `ansible/roles/base/files/id_ed25519.pub` = the `ansible` user's key; `id_rsa.pub` = `sysadm1n`/maintenance key.
 - Secrets/tfstate are gitignored; keep it that way.
 

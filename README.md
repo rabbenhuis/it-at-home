@@ -1,9 +1,8 @@
 # it-at-home
 
 Proxmox template builds using Terraform (`bpg/proxmox`) + Ansible. The pipeline
-creates an LXC container (from an upstream template or a clone of a previous
-build), hardens/provisions it with Ansible, then converts it into a versioned
-Proxmox template via the API.
+creates an LXC container or a QEMU VM, hardens/provisions it with Ansible, then
+converts it into a versioned Proxmox template via the API.
 
 ## Templates produced
 
@@ -12,6 +11,7 @@ Proxmox template via the API.
 | `tmpl-debian13-native-vX` | upstream Debian 13 tar | base hardening only |
 | `tmpl-debian13-podman-vX` | clone of `native-vX` | base + podman |
 | `tmpl-debian13-docker-vX` | clone of `native-vX` | base + docker (nesting enabled) |
+| `tmpl-debian13-vm-vX` | Debian 13 cloud image (QEMU) | base + qemu-guest-agent + acct |
 
 `X` is the version suffix (currently `1`). Older versions stay on PVE as
 immutable artifacts while newer ones are built.
@@ -43,8 +43,9 @@ export TF_VAR_pm_api_token_secret='<secret>'
 ## Repo layout
 
 ```
-main.tf                        # provider + module instances (native/podman/docker)
+main.tf                        # provider + module instances (native/podman/docker/vm)
 modules/lxc-template/          # reusable container -> template module
+modules/vm-template/           # reusable VM (cloud image + cloud-init) -> template
 ansible/
   ansible.cfg
   inventory/hosts.yml
@@ -52,10 +53,12 @@ ansible/
     harden.yml                 # base hardening only
     podman.yml                 # base + podman
     docker.yml                 # base + docker
+    vm.yml                     # base + vm
   roles/
-    base/                      # shared hardening (containers and later VMs)
+    base/                      # shared hardening (LXC and VM)
     podman/
     docker/
+    vm/                        # qemu-guest-agent + acct (VM only)
 scripts/build-template.sh      # full pipeline: apply -> provision -> convert
 ```
 
@@ -68,10 +71,10 @@ scripts/build-template.sh      # full pipeline: apply -> provision -> convert
 ```
 
 It will:
-1. `terraform apply` the selected module (`native`, `podman`, or `docker`)
-2. Run the matching Ansible playbook against the new container
-3. Stop the container and convert it to a template via the Proxmox API
-   (`POST /nodes/<node>/lxc/<vmid>/template`)
+1. `terraform apply` the selected module (`native`, `podman`, `docker`, or `vm`)
+2. Run the matching Ansible playbook against the new instance
+3. Stop the instance and convert it to a template via the Proxmox API
+   (`POST /nodes/<node>/lxc/<vmid>/template`; the VM uses `/qemu/`)
 4. `terraform state rm` the build resource (the template is the artifact)
 
 Example:
@@ -80,6 +83,7 @@ Example:
 ./scripts/build-template.sh native 1 9000
 ./scripts/build-template.sh podman 1 9010
 ./scripts/build-template.sh docker 1 9020
+./scripts/build-template.sh vm 1 9200
 ```
 
 `native` connects over SSH as `root`; `podman`/`docker` connect as the `ansible`
@@ -132,14 +136,16 @@ Point podman/docker at the new native template and give every build a fresh VMID
 | `harden.yml` | base | root |
 | `podman.yml` | base, podman | ansible |
 | `docker.yml` | base, docker | ansible |
+| `vm.yml` | base, vm | debian (cloud-init) |
 
-All playbooks target `all` hosts; the build script passes the container IP
+All playbooks target `all` hosts; the build script passes the instance IP
 inline:
 
 ```bash
 cd ansible
 ~/.local/bin/ansible-playbook -i 192.168.70.90, -u root -b playbooks/harden.yml
 ~/.local/bin/ansible-playbook -i 192.168.70.91, -u ansible -b playbooks/podman.yml
+~/.local/bin/ansible-playbook -i 192.168.70.93, -u debian -b playbooks/vm.yml
 ```
 
 ### base role summary
@@ -192,6 +198,7 @@ terraform state rm 'module.template_native.proxmox_virtual_environment_container
 - `Protocol 2` is intentionally omitted: OpenSSH >= 9.6 (Debian 13 ships 9.8)
   removed the option and it would prevent sshd from starting.
 - auditd is not installed: it cannot fully function in an unprivileged LXC.
+- acct (process accounting) is only installed/enabled in the VM template (`vm` role); it can't run in an unprivileged LXC.
 - fail2ban starts but may not be able to manipulate nftables inside an
   unprivileged container; the Proxmox firewall is the primary protection.
 - After the first successful build, `terraform state list` no longer shows the
