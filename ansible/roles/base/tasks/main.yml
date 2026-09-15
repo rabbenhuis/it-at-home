@@ -327,6 +327,14 @@
     owner: root
     group: root
 
+- name: Install send-mail helper (From = <hostname>@abbenhuis.net)
+  ansible.builtin.copy:
+    src: send-mail.sh
+    dest: /usr/local/bin/send-mail
+    mode: "0700"
+    owner: root
+    group: root
+
 - name: Write msmtp config for lynis report emails
   ansible.builtin.template:
     src: msmtprc.j2
