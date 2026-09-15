@@ -60,11 +60,13 @@ ansible/
     podman.yml                 # base + podman
     docker.yml                 # base + docker
     vm.yml                     # base + vm
+    adguard.yml                # deploy AdGuard Home (post-deploy)
   roles/
     base/                      # shared hardening (LXC and VM)
     podman/
     docker/
     vm/                        # qemu-guest-agent + acct (VM only)
+    adguard/                   # AdGuard Home install + config (deployed hosts)
 scripts/build-template.sh      # full pipeline: apply -> provision -> convert
 scripts/deploy-hosts.sh        # deploy hosts from deployments.tf
 scripts/_deploy-helpers.py     # JSON helpers used by deploy-hosts.sh

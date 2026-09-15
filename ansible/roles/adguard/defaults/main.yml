@@ -1,0 +1,35 @@
+# AdGuard Home role defaults. Override per host/play via group_vars or -e.
+adguard_version: "latest"
+adguard_install_dir: "/opt/AdGuardHome"
+
+# Download URL is built in tasks from adguard_arch (x86_64 -> amd64, aarch64 -> arm64).
+adguard_arch: "{{ 'amd64' if ansible_architecture == 'x86_64' else 'arm64' if ansible_architecture == 'aarch64' else ansible_architecture }}"
+adguard_download_url: "https://github.com/AdguardTeam/AdGuardHome/releases/{{ adguard_version }}/download/AdGuardHome_linux_{{ adguard_arch }}.tar.gz"
+
+adguard_web_listen: "0.0.0.0"
+adguard_web_port: 3000
+adguard_dns_listen: "0.0.0.0"
+adguard_dns_port: 53
+
+adguard_upstream_dns:
+  - https://dns.adguard-dns.com/dns-query
+adguard_bootstrap_dns:
+  - 94.140.14.14
+  - 94.140.15.15
+adguard_fallback_dns: []
+
+adguard_filters:
+  - name: "AdGuard DNS filter"
+    url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"
+
+# Web UI accounts: [{name: admin, password: "<bcrypt hash>"}]. Generate a hash
+# with: htpasswd -nbB admin <password>. Empty list = no authentication.
+adguard_users: []
+
+adguard_protection_enabled: true
+adguard_filtering_blocking_mode: "default"
+adguard_safe_search_enabled: false
+adguard_safe_browsing_enabled: false
+adguard_parental_enabled: false
+adguard_cache_size: 4194304
+adguard_schema_version: 29

@@ -1,0 +1,64 @@
+---
+- name: Create AdGuard Home install directory
+  ansible.builtin.file:
+    path: "{{ adguard_install_dir }}"
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Download AdGuard Home binary
+  ansible.builtin.get_url:
+    url: "{{ adguard_download_url }}"
+    dest: "/tmp/AdGuardHome_linux_{{ adguard_arch }}.tar.gz"
+    mode: "0644"
+
+- name: Extract AdGuard Home binary
+  ansible.builtin.unarchive:
+    src: "/tmp/AdGuardHome_linux_{{ adguard_arch }}.tar.gz"
+    dest: "{{ adguard_install_dir }}"
+    remote_src: true
+    creates: "{{ adguard_install_dir }}/AdGuardHome"
+
+- name: Remove downloaded archive
+  ansible.builtin.file:
+    path: "/tmp/AdGuardHome_linux_{{ adguard_arch }}.tar.gz"
+    state: absent
+
+- name: Disable systemd-resolved stub listener (frees port 53)
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: false
+    state: stopped
+  ignore_errors: true
+
+- name: Write AdGuard Home configuration
+  ansible.builtin.template:
+    src: AdGuardHome.yaml.j2
+    dest: "{{ adguard_install_dir }}/AdGuardHome.yaml"
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart AdGuardHome
+
+- name: Install AdGuard Home systemd unit
+  ansible.builtin.template:
+    src: AdGuardHome.service.j2
+    dest: /etc/systemd/system/AdGuardHome.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart AdGuardHome
+
+- name: Enable and start AdGuard Home
+  ansible.builtin.systemd:
+    name: AdGuardHome
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for AdGuard Home DNS listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ adguard_dns_port }}"
+    timeout: 60

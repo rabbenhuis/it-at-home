@@ -104,8 +104,10 @@ while IFS='|' read -r name type ip playbook; do
 
   log "Provisioning $name ($type, $ip) with $playbook as $user"
   ssh-keygen -R "$ip" >/dev/null 2>&1 || true
+  # First boot runs firstboot.service (machine-id, SSH host keys, aideinit,
+  # rkhunter) before ssh starts, so SSH can take several minutes to appear.
   READY=0
-  for i in $(seq 1 120); do
+  for i in $(seq 1 180); do
     if timeout 3 bash -c ">/dev/tcp/$ip/22" 2>/dev/null && \
        timeout 6 ssh -o BatchMode=yes -o ConnectTimeout=4 \
          -o StrictHostKeyChecking=accept-new "$user@$ip" \
@@ -116,7 +118,7 @@ while IFS='|' read -r name type ip playbook; do
     sleep 5
   done
   if [[ "$READY" -ne 1 ]]; then
-    echo "WARN: SSH to $ip did not become ready within ~10 min, skipping $name" >&2
+    echo "WARN: SSH to $ip did not become ready within ~15 min, skipping $name" >&2
     continue
   fi
   (cd "$ROOT/ansible" && ~/.local/bin/ansible-playbook -i "${ip}," -u "$user" -b "playbooks/$playbook")
