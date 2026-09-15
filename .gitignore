@@ -8,9 +8,15 @@
 crash.log
 crash.*.log
 
+# Deployments config (separate lifecycle from template builds)
+deploy/terraform.tfstate*
+
 # Ansible
 *.retry
 
 # OS / editor
 .DS_Store
 *.swp
+
+# Python
+__pycache__/

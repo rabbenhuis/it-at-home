@@ -12,7 +12,15 @@ Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds vers
 
 `./scripts/build-template.sh <role> <version> <vmid> [target]` runs: `terraform apply` (`target=pve1|pve2` selects endpoint/node/arch/storage/images) → SSH-wait (~10 min, covers clone firstboot/aideinit and VM cloud-init) → `ansible-playbook` → stop → convert to template (API `POST /lxc/<vmid>/template`, VM uses `/qemu/`) → rename (API `PUT .../config`; `hostname=` for LXC, `name=` for VM) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
 
-Per-node settings (endpoint, node name, architecture, disk/image datastores, bridge, VLAN, IPs, image file ids) live in the `nodes` locals map in `main.tf`. Base images are **static references** (not downloaded by Terraform) — provision each node's `nas` once; the pve2 (arm64) filenames are placeholders to confirm via `pveam available | grep arm64`.
+Per-node settings (endpoint, node name, architecture, disk/image datastores, bridge, VLAN, IPs, image file ids) live in the `nodes` output of `modules/cluster-data/outputs.tf` (shared with the deploy config). Base images are **static references** (not downloaded by Terraform) — provision each node's `nas` once; the pve2 (arm64) filenames are placeholders to confirm via `pveam available | grep arm64`.
+
+## Deployments (deploy/)
+
+`deploy/` is a **separate Terraform config** (own statefile) that clones hosts from the built templates. Source of truth is the **deployment map** `deploy/deployments.tf` (HCL, one entry per host — not a CSV). `scripts/deploy-hosts.sh` runs `terraform apply` then ansible per host with a `playbook` field (SSH user: `ansible` for lxc, `debian` for vm).
+
+- Per-node/per-host scope (`pve1|pve2`, `--hosts a,b`) must be done with **`-target`** (script already does this). Do **not** implement scoping by filtering `for_each`/`count` on the map — that destroys hosts left out of the scope.
+- Gateway/nameserver/search-domain come from the `vlans` registry in `modules/cluster-data` (keyed by VLAN ID); hosts only set `vlan_id`.
+- `deploy/deployments.tf` is validated by `terraform validate` from `deploy/` (needs `terraform init` there first). Do that, not `plan` (no creds in the agent shell).
 
 ## Ansible specifics
 
@@ -29,11 +37,11 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 - `Protocol 2` is invalid on OpenSSH 10 (Debian 13) — omitted. `auditd` and `acct` are absent from the LXC base because kernel auditing/accounting can't run in an unprivileged LXC; `acct` **is** installed by the `vm` role (works in a full VM).
 - Module input is `template_version`, not `version` (`version` is a reserved module meta-argument).
 - SSH host-key / machine-id / aide-db / firstboot.done are stripped in cleanup so templates ship clean; a `firstboot.service` regenerates them per clone. `firstboot.sh` must **not** call `systemctl restart ssh` (caused a boot deadlock).
-- The VM template uses a static cloud image file id in the `nodes` map (`modules/vm-template`); `initialization.user_account.username = "debian"`. The LXC ostemplate is likewise a static `nas:vztmpl/...` reference per node. Both images are provisioned manually per node (the `proxmox_download_file` resources were dropped because target-switching would destroy/redownload them).
+- The VM template uses a static cloud image file id in the `nodes` output of `modules/cluster-data` (`modules/vm-template`); `initialization.user_account.username = "debian"`. The LXC ostemplate is likewise a static `nas:vztmpl/...` reference per node. Both images are provisioned manually per node (the `proxmox_download_file` resources were dropped because target-switching would destroy/redownload them).
 
 ## Layout
 
-- `modules/lxc-template/` — reusable container resource; `base_template_file` vs `base_clone_id` select create-vs-clone. `modules/vm-template/` — QEMU VM from a cloud image (cloud-init).
+- `modules/lxc-template/` — reusable container resource; `base_template_file` vs `base_clone_id` select create-vs-clone. `modules/vm-template/` — QEMU VM from a cloud image (cloud-init). `modules/deploy/` — one module per node (`deploy_pve1`/`deploy_pve2`) cloning templates into managed hosts (lxc or vm via `type`).
 - `ansible/roles/base/` — shared hardening (packages, sshd drop-in, users, sysctl, cron email jobs). `ansible/roles/{podman,docker}/` — runtime installs. `ansible/roles/vm/` — qemu-guest-agent + acct (VM only).
 - `ansible/roles/base/files/id_ed25519.pub` = the `ansible` user's key; `id_rsa.pub` = `sysadm1n`/maintenance key.
 - Secrets/tfstate are gitignored; keep it that way.

@@ -44,8 +44,13 @@ export TF_VAR_pm_api_token_secret='<secret>'
 
 ```
 main.tf                        # provider + module instances (native/podman/docker/vm)
+modules/cluster-data/          # shared node map, VLAN registry, SSH keys (build + deploy)
 modules/lxc-template/          # reusable container -> template module
 modules/vm-template/           # reusable VM (cloud image + cloud-init) -> template
+modules/deploy/                # clone a template -> deployed host (lxc or vm, per node)
+deploy/                        # deployment map, own statefile
+  main.tf                      # one module per node (deploy_pve1 / deploy_pve2)
+  deployments.tf               # deployment map - one entry per host (edit this)
 ansible/
   ansible.cfg
   inventory/hosts.yml
@@ -60,6 +65,8 @@ ansible/
     docker/
     vm/                        # qemu-guest-agent + acct (VM only)
 scripts/build-template.sh      # full pipeline: apply -> provision -> convert
+scripts/deploy-hosts.sh        # deploy hosts from deployments.tf
+scripts/_deploy-helpers.py     # JSON helpers used by deploy-hosts.sh
 ```
 
 ## One-shot pipeline
@@ -93,6 +100,65 @@ Example:
 
 `native` connects over SSH as `root`; `podman`/`docker` connect as the `ansible`
 user baked into the native template.
+
+## Deployments from templates (deployment map)
+
+The `deploy/` config clones hosts from the built templates. It is a **separate
+Terraform configuration with its own statefile** so deployed hosts are
+long-lived resources, isolated from the build-and-discard template pipeline.
+Both configs share `modules/cluster-data/` (node map, VLAN registry, SSH keys).
+
+### Deployment map (`deploy/deployments.tf`)
+
+One entry per host. The map (not a CSV) is the source of truth so fields stay
+native HCL types, comments are allowed, and `terraform validate` catches errors:
+
+| Field | Meaning |
+|-------|---------|
+| `type` | `"lxc"` or `"vm"` |
+| `target` | node: `"pve1"` (amd64) or `"pve2"` (arm64) |
+| `vlan_id` | VLAN ID; gateway/nameserver/search-domain resolve from the VLAN registry |
+| `template_vmid` | template to clone: 9000 native / 9010 podman / 9020 docker / 9200 vm |
+| `vmid` | unique VMID (keep clear of the 9000-9200 template range, e.g. 100-899) |
+| `ip` | static IPv4 in CIDR, on the VLAN's subnet |
+| `cores` | CPU cores (omit = inherit template) |
+| `memory` | RAM in MB (omit = inherit template) |
+| `disk_size` | rootfs/disk in GB, **LXC only** (omit = inherit; VM disk is always inherited) |
+| `on_boot` | start at host boot (default `true`) |
+| `unprivileged` | LXC only (default `true`) |
+| `nesting`/`fuse`/`keyctl` | LXC features (omit = inherit template) |
+| `playbook` | ansible playbook to run post-deploy (e.g. `"harden.yml"`); omit = skip |
+
+### VLAN registry (`modules/cluster-data/outputs.tf`)
+
+The `vlans` output is the single source of truth for every VLAN. Each entry
+provides `gateway`, `nameserver` and `dns_zone` (used as the host's search
+domain); deployed hosts only reference the numeric `vlan_id`:
+
+```hcl
+vlans = {
+  70 = { name = "mgmt", subnet = "192.168.70.0/24",
+         gateway = "192.168.70.1", nameserver = "192.168.70.1",
+         dns_zone = "abbenhuis.internal" }
+}
+```
+
+### Deploying
+
+```bash
+./scripts/deploy-hosts.sh                 # deploy all hosts
+./scripts/deploy-hosts.sh pve1            # deploy only pve1 (amd64) hosts
+./scripts/deploy-hosts.sh pve2            # deploy only pve2 (arm64) hosts
+./scripts/deploy-hosts.sh --hosts web1,db1  # deploy only the named hosts
+./scripts/deploy-hosts.sh destroy [scope]   # tear down (same scope options)
+```
+
+Scoped deploys use `terraform apply -target` so hosts outside the scope are
+**never touched** (the map stays the full desired state). Ansible provisioning
+runs only for hosts in scope that set a `playbook`. SSH users are chosen by
+type: `ansible` for LXC (baked into the templates), `debian` for VMs
+(cloud-init). Requires the same `TF_VAR_pm_api_token_*` env vars as the
+template pipeline.
 
 ## Terraform
 
