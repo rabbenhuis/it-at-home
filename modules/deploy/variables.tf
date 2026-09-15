@@ -38,7 +38,7 @@ variable "hostname" {
 }
 
 variable "nameserver" {
-  type = string
+  type = list(string)
 }
 
 variable "searchdomain" {

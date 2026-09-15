@@ -132,13 +132,13 @@ native HCL types, comments are allowed, and `terraform validate` catches errors:
 ### VLAN registry (`modules/cluster-data/outputs.tf`)
 
 The `vlans` output is the single source of truth for every VLAN. Each entry
-provides `gateway`, `nameserver` and `dns_zone` (used as the host's search
-domain); deployed hosts only reference the numeric `vlan_id`:
+provides `gateway`, `nameserver` (a list) and `dns_zone` (used as the host's
+search domain); deployed hosts only reference the numeric `vlan_id`:
 
 ```hcl
 vlans = {
   70 = { name = "mgmt", subnet = "192.168.70.0/24",
-         gateway = "192.168.70.1", nameserver = "192.168.70.1",
+         gateway = "192.168.70.1", nameserver = ["192.168.70.1"],
          dns_zone = "abbenhuis.internal" }
 }
 ```

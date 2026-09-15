@@ -54,7 +54,7 @@ output "vlans" {
       name       = "mgmt"
       subnet     = "192.168.70.0/24"
       gateway    = "192.168.70.1"
-      nameserver = "192.168.70.1"
+      nameserver = ["192.168.70.1"]
       dns_zone   = "abbenhuis.internal"
     }
     # Add your other VLANs here, e.g.:
@@ -62,7 +62,7 @@ output "vlans" {
     #   name       = "services"
     #   subnet     = "192.168.80.0/24"
     #   gateway    = "192.168.80.1"
-    #   nameserver = "192.168.80.1"
+    #   nameserver = ["192.168.80.1"]
     #   dns_zone   = "services.abbenhuis.internal"
     # }
   }

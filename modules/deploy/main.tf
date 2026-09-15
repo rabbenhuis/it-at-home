@@ -52,7 +52,7 @@ resource "proxmox_virtual_environment_container" "instance" {
 
     dns {
       domain  = var.searchdomain
-      servers = [var.nameserver]
+      servers = var.nameserver
     }
 
     ip_config {
@@ -131,7 +131,7 @@ resource "proxmox_virtual_environment_vm" "instance" {
     }
 
     dns {
-      servers = [var.nameserver]
+      servers = var.nameserver
       domain  = var.searchdomain
     }
 
