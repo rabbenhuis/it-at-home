@@ -1,0 +1,59 @@
+---
+- name: Check whether systemd-resolved is present
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/systemd-resolved.service
+  register: unbound_resolved_unit
+
+- name: Disable systemd-resolved stub listener (frees port 53)
+  ansible.builtin.systemd:
+    name: systemd-resolved
+    enabled: false
+    state: stopped
+  when: unbound_resolved_unit.stat.exists
+
+- name: Install unbound and root hints
+  ansible.builtin.apt:
+    name:
+      - unbound
+      - dns-root-data
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Write unbound configuration
+  ansible.builtin.template:
+    src: unbound.conf.j2
+    dest: /etc/unbound/unbound.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart unbound
+
+- name: Install unbound systemd unit
+  ansible.builtin.template:
+    src: unbound.service.j2
+    dest: /etc/systemd/system/unbound.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart unbound
+
+- name: Validate unbound configuration
+  ansible.builtin.command: unbound-checkconf /etc/unbound/unbound.conf
+  register: unbound_checkconf
+  changed_when: false
+  failed_when: unbound_checkconf.rc != 0
+
+- name: Enable and start unbound
+  ansible.builtin.systemd:
+    name: unbound
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for unbound DNS listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 53
+    timeout: 60

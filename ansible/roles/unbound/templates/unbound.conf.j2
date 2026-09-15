@@ -1,0 +1,37 @@
+# Managed by Terraform/Ansible (role: unbound)
+server:
+	verbosity: {{ unbound_verbosity }}
+
+	interface: {{ unbound_listen_ip }}
+	interface: 127.0.0.1
+
+	do-ip4: yes
+	do-ip6: no
+	do-udp: yes
+	do-tcp: yes
+	do-daemonize: no
+
+	# Only the AdGuard servers may query this resolver.
+	access-control: 127.0.0.0/8 allow
+{% for c in unbound_allowed_clients %}
+	access-control: {{ c }} allow
+{% endfor %}
+	access-control: 0.0.0.0/0 refuse
+
+	# DNSSEC validation.
+	auto-trust-anchor-file: "/var/lib/unbound/root.key"
+	root-hints: "/usr/share/dns/root.hints"
+
+	hide-identity: yes
+	hide-version: yes
+	prefetch: yes
+	qname-minimisation: {{ unbound_qname_minimisation | ternary('yes', 'no') }}
+	cache-min-ttl: {{ unbound_cache_min_ttl }}
+	cache-max-ttl: {{ unbound_cache_max_ttl }}
+	harden-dnssec-stripped: yes
+
+remote-control:
+	control-enable: yes
+	control-interface: 127.0.0.1
+	control-port: 8953
+	control-use-cert: no

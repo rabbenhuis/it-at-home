@@ -1,0 +1,15 @@
+# Unbound recursive resolver role defaults.
+unbound_verbosity: 1
+
+# Interface unbound listens on (defaults to the host's primary IPv4).
+unbound_listen_ip: "{{ ansible_facts['default_ipv4']['address'] }}"
+
+# Only these clients may query the resolver (AdGuard Home servers).
+# Must match adguard_dns_servers in deploy/firewall.tf.
+unbound_allowed_clients:
+  - "192.168.90.40"
+  - "192.168.90.42"
+
+unbound_qname_minimisation: true
+unbound_cache_min_ttl: 300
+unbound_cache_max_ttl: 86400

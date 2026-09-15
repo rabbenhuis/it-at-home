@@ -1,0 +1,6 @@
+---
+- name: Deploy unbound recursive resolver
+  hosts: all
+  become: true
+  roles:
+    - role: unbound
