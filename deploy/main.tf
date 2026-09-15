@@ -75,7 +75,7 @@ module "deploy_pve1" {
   bridge         = module.cluster.nodes.pve1.bridge
   vlan_id        = each.value.vlan_id
   firewall       = true
-  description    = "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})"
+  description    = try(each.value.description, "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})")
 }
 
 module "deploy_pve2" {
@@ -109,7 +109,7 @@ module "deploy_pve2" {
   bridge         = module.cluster.nodes.pve2.bridge
   vlan_id        = each.value.vlan_id
   firewall       = true
-  description    = "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})"
+  description    = try(each.value.description, "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})")
 }
 
 output "hosts" {
@@ -121,7 +121,7 @@ output "hosts" {
       vlan_id  = h.vlan_id
       vmid     = h.vmid
       ip       = h.ip
-      playbook = try(h.playbook, "")
+      playbook = try(local.roles[try(h.role, "")], "")
     }
   }
 }

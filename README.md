@@ -51,6 +51,7 @@ modules/deploy/                # clone a template -> deployed host (lxc or vm, p
 deploy/                        # deployment map, own statefile
   main.tf                      # one module per node (deploy_pve1 / deploy_pve2)
   deployments.tf               # deployment map - one entry per host (edit this)
+  roles.tf                     # role -> ansible playbook mapping
 ansible/
   ansible.cfg
   inventory/hosts.yml
@@ -127,7 +128,28 @@ native HCL types, comments are allowed, and `terraform validate` catches errors:
 | `on_boot` | start at host boot (default `true`) |
 | `unprivileged` | LXC only (default `true`) |
 | `nesting`/`fuse`/`keyctl` | LXC features (omit = inherit template) |
-| `playbook` | ansible playbook to run post-deploy (e.g. `"harden.yml"`); omit = skip |
+| `role` | service role to apply post-deploy, mapped to an ansible playbook in `deploy/roles.tf` (e.g. `adguard`, `unbound`, `haos`); omit = skip |
+| `description` | free-form note shown in the Proxmox container/VM notes field (omit = `Managed by Terraform (deployed from template vmid N)`) |
+
+### Role → playbook mapping (`deploy/roles.tf`)
+
+The `role` field is a service/application name; `deploy/roles.tf` maps it to an
+Ansible playbook that is applied post-deploy:
+
+```hcl
+locals {
+  roles = {
+    adguard = "adguard.yml"
+    unbound = "unbound.yml"
+    haos    = "haos.yml"
+    harden  = "harden.yml"
+  }
+}
+```
+
+A host without a `role` (or with a role not in the map) is created but not
+provisioned. Add a new service by creating its playbook under `ansible/playbooks/`
+(which can include an Ansible role under `ansible/roles/`) and registering it here.
 
 ### VLAN registry (`modules/cluster-data/outputs.tf`)
 

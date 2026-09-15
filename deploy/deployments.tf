@@ -15,7 +15,11 @@
 #   on_boot       start at host boot (default true)
 #   unprivileged  LXC only (default true)
 #   nesting/fuse/keyctl  LXC features (omit = inherit template)
-#   playbook      ansible playbook to run post-deploy (e.g. "harden.yml"); omit = skip
+#   role          service role to apply post-deploy, mapped to an ansible playbook
+#                 in deploy/roles.tf (e.g. "adguard", "unbound", "haos", "harden");
+#                 omit = skip
+#   description   free-form note shown in the Proxmox container/VM notes field
+#                 (omit = "Managed by Terraform (deployed from template vmid N)")
 locals {
   deployments = {
     # web1 = {
@@ -31,7 +35,8 @@ locals {
     #   on_boot       = true
     #   unprivileged  = true
     #   nesting       = true
-    #   playbook      = "harden.yml"
+    #   role          = "adguard"
+    #   description   = "AdGuard Home DNS blocker"
     # }
     #
     # db1 = {
@@ -55,7 +60,7 @@ locals {
     #   cores         = 2
     #   memory        = 4096
     #   ip            = "192.168.70.31/24"
-    #   playbook      = "vm.yml"
+    #   role          = "unbound"
     # }
   }
 }
