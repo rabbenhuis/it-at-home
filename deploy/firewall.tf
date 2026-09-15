@@ -19,6 +19,9 @@ locals {
     { type = "in", action = "ACCEPT", proto = "icmp", comment = "ICMP (mgmt)" },
   ]
 
+  # AdGuard Home servers: the only clients allowed to query the unbound resolver.
+  adguard_dns_servers = ["192.168.90.40", "192.168.90.42"]
+
   firewall_rules = {
     adguard = [
       # Environment-wide DNS server: 53 open to all VLANs.
@@ -29,8 +32,11 @@ locals {
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     unbound = [
-      { type = "in", action = "ACCEPT", proto = "udp", dport = "53", comment = "DNS" },
-      { type = "in", action = "ACCEPT", proto = "tcp", dport = "53", comment = "DNS over TCP" },
+      # Recursive resolver: only the AdGuard servers may query it.
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "53",
+      source = join(",", local.adguard_dns_servers), comment = "DNS (AdGuard)" },
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "53",
+      source = join(",", local.adguard_dns_servers), comment = "DNS over TCP (AdGuard)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     # haos: add when a Home Assistant host is deployed (e.g. tcp 80/443/8123 from mgmt).

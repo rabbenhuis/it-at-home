@@ -43,6 +43,25 @@ locals {
       role          = "adguard"
       description   = "Secondary AdGuard Home DNS blocker (Managed by Terraform)"
     }
+    unbound-sec01 = {
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 90
+      template_vmid = 9000
+      vmid          = 206
+      cores         = 1
+      memory        = 512
+      disk_size     = 8
+      ip            = "192.168.90.43/24"
+      on_boot       = true
+      startup       = { order = 20, up_delay = 15, down_delay = 60 }
+      unprivileged  = true
+      nesting       = false
+      keyctl        = false
+      fuse          = false
+      role          = "unbound"
+      description   = "Secondary recursive resolver (Managed by Terraform)"
+    }
     # web1 = {
     #   type          = "lxc"
     #   target        = "pve1"
