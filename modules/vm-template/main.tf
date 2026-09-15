@@ -23,7 +23,8 @@ resource "proxmox_virtual_environment_vm" "build" {
   }
 
   cpu {
-    architecture = var.architecture
+    # bpg VM uses x86_64/aarch64; caller passes amd64/arm64 (LXC naming).
+    architecture = var.architecture == "arm64" ? "aarch64" : "x86_64"
     cores        = var.cores
   }
 
