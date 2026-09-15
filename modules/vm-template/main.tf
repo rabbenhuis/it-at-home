@@ -12,6 +12,9 @@ resource "proxmox_virtual_environment_vm" "build" {
   vm_id     = var.vmid
   started   = true
 
+  # Ephemeral build instance: don't auto-start after a node reboot.
+  start_on_boot = false
+
   stop_on_destroy = true
 
   agent {

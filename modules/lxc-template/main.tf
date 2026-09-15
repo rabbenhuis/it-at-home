@@ -13,6 +13,9 @@ resource "proxmox_virtual_environment_container" "build" {
   unprivileged = var.unprivileged
   started      = true
 
+  # Ephemeral build instance: don't auto-start after a node reboot.
+  start_on_boot = false
+
   cpu {
     architecture = var.architecture
     cores        = var.cores
