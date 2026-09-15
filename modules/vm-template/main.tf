@@ -7,10 +7,11 @@ terraform {
 }
 
 resource "proxmox_virtual_environment_vm" "build" {
-  name      = var.hostname
-  node_name = var.node_name
-  vm_id     = var.vmid
-  started   = true
+  description = "Managed by Terraform (template build vm v${var.template_version})"
+  name        = var.hostname
+  node_name   = var.node_name
+  vm_id       = var.vmid
+  started     = true
 
   # Ephemeral build instance: don't auto-start after a node reboot.
   on_boot = false
