@@ -12,10 +12,10 @@ adguard_dns_listen: "0.0.0.0"
 adguard_dns_port: 53
 
 adguard_upstream_dns:
-  - https://dns.adguard-dns.com/dns-query
-adguard_bootstrap_dns:
-  - 94.140.14.14
-  - 94.140.15.15
+  - 192.168.90.41
+  - 192.168.90.43
+# Upstreams are plain-IP (no hostnames), so no bootstrap/fallback DNS is needed.
+adguard_bootstrap_dns: []
 adguard_fallback_dns: []
 
 adguard_filters:
