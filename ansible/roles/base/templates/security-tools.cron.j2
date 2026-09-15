@@ -11,3 +11,5 @@ MAILTO=""
 10 3 * * 1 root OUT=$(debsecan --format detail --suite {{ ansible_distribution_release }} --only-fixed 2>/dev/null); [ -n "$OUT" ] && { echo "debsecan check - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "$OUT"; } | /usr/local/bin/send-mail || true
 
 0 7 * * * root [ -f /var/run/reboot-required ] && { echo "Restart required - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo; cat /var/run/reboot-required.pkgs 2>/dev/null; } | /usr/local/bin/send-mail || true
+
+5 7 * * * root OUT=$(needrestart -b 2>/dev/null | grep '^NEEDRESTART-SVC:'); [ -n "$OUT" ] && { echo "Services needing restart - $(hostname)"; echo "Datum: $(date '+\%Y-\%m-\%d \%H:\%M')"; echo "$OUT"; } | /usr/local/bin/send-mail || true
