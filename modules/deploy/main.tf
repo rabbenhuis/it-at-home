@@ -164,3 +164,34 @@ resource "proxmox_virtual_environment_vm" "instance" {
     }
   }
 }
+
+# Per-guest PVE firewall rules (the .fw file is replaced wholesale). Only
+# created when the host's role provides rules; created/destroyed with the host.
+resource "proxmox_virtual_environment_firewall_rules" "instance" {
+  count = length(var.firewall_rules) > 0 ? 1 : 0
+
+  depends_on = [
+    proxmox_virtual_environment_container.instance,
+    proxmox_virtual_environment_vm.instance,
+  ]
+
+  node_name    = var.node_name
+  container_id = var.type == "lxc" ? var.vmid : null
+  vm_id        = var.type == "vm" ? var.vmid : null
+
+  dynamic "rule" {
+    for_each = var.firewall_rules
+    content {
+      type    = rule.value.type
+      action  = rule.value.action
+      comment = try(rule.value.comment, null)
+      proto   = try(rule.value.proto, null)
+      dport   = try(rule.value.dport, null)
+      sport   = try(rule.value.sport, null)
+      source  = try(rule.value.source, null)
+      dest    = try(rule.value.dest, null)
+      iface   = try(rule.value.iface, null)
+      log     = try(rule.value.log, null)
+    }
+  }
+}

@@ -20,6 +20,7 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 
 - Per-node/per-host scope (`pve1|pve2`, `--hosts a,b`) must be done with **`-target`** (script already does this). Do **not** implement scoping by filtering `for_each`/`count` on the map — that destroys hosts left out of the scope.
 - Gateway/nameserver/search-domain come from the `vlans` registry in `modules/cluster-data` (keyed by VLAN ID); hosts only set `vlan_id`.
+- Per-guest firewall rules are derived from the host's `role` via `deploy/firewall.tf` (`local.firewall_rules`, deny-by-default with a DROP tail; mgmt SSH/ICMP base from VLANs 120/132 is prepended). The rule set replaces the guest's whole `.fw` file, so it must be complete. Only registered roles get rules; others stay ACCEPT.
 - `deploy/deployments.tf` is validated by `terraform validate` from `deploy/` (needs `terraform init` there first). Do that, not `plan` (no creds in the agent shell).
 
 ## Ansible specifics

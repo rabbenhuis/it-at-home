@@ -135,3 +135,20 @@ variable "firewall" {
   type    = bool
   default = true
 }
+
+variable "firewall_rules" {
+  description = "Complete PVE firewall rule set for this host (list of rule objects). Empty = no rules."
+  type = list(object({
+    type    = string
+    action  = string
+    comment = optional(string)
+    proto   = optional(string)
+    dport   = optional(string)
+    sport   = optional(string)
+    source  = optional(string)
+    dest    = optional(string)
+    iface   = optional(string)
+    log     = optional(string)
+  }))
+  default = []
+}

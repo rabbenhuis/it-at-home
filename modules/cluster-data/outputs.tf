@@ -50,12 +50,33 @@ output "nodes" {
 output "vlans" {
   description = "Global VLAN registry keyed by VLAN ID. Every deployed host resolves gateway/nameserver/dns_zone from here."
   value = {
+    37 = {
+      name       = "Network Management"
+      subnet     = "192.168.37.0/24"
+      gateway    = "192.168.37.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "mgmt.abbenhuis.net"
+    }
     70 = {
-      name       = "mgmt"
+      name       = "Hypervisor Plane"
       subnet     = "192.168.70.0/24"
       gateway    = "192.168.70.1"
-      nameserver = ["192.168.70.1"]
-      dns_zone   = "abbenhuis.internal"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "hyper.abbenhuis.net"
+    }
+    75 = {
+      name       = "Security Hypervisor Plane"
+      subnet     = "192.168.75.0/24"
+      gateway    = "192.168.75.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "sec-hyper.abbenhuis.net"
+    }
+    80 = {
+      name       = "Security Services"
+      subnet     = "192.168.80.0/24"
+      gateway    = "192.168.80.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "sec.abbenhuis.net"
     }
     90 = {
       name       = "infrastructure"
@@ -63,6 +84,41 @@ output "vlans" {
       gateway    = "192.168.90.1"
       nameserver = ["192.168.90.40", "192.168.90.42", "192.168.90.1"]
       dns_zone   = "infra.abbenhuis.net"
+    }
+    95 = {
+      name       = "Operations"
+      subnet     = "192.168.95.0/24"
+      gateway    = "192.168.95.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "ops.abbenhuis.net"
+    }
+    100 = {
+      name       = "Applications"
+      subnet     = "192.168.100.0/24"
+      gateway    = "192.168.100.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "apps.abbenhuis.net"
+    }
+    115 = {
+      name       = "Observability"
+      subnet     = "192.168.115.0/24"
+      gateway    = "192.168.115.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "obs.abbenhuis.net"
+    }
+    120 = {
+      name       = "Wired Clients"
+      subnet     = "192.168.120.0/24"
+      gateway    = "192.168.120.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "clients.abbenhuis.net"
+    }
+    132 = {
+      name       = "Private WLAN"
+      subnet     = "192.168.132.0/24"
+      gateway    = "192.168.132.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "clients.abbenhuis.net"
     }
   }
 }

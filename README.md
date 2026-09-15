@@ -52,6 +52,7 @@ deploy/                        # deployment map, own statefile
   main.tf                      # one module per node (deploy_pve1 / deploy_pve2)
   deployments.tf               # deployment map - one entry per host (edit this)
   roles.tf                     # role -> ansible playbook mapping
+  firewall.tf                  # role -> PVE firewall rules mapping
 ansible/
   ansible.cfg
   inventory/hosts.yml
@@ -173,6 +174,31 @@ locals {
 A host without a `role` (or with a role not in the map) is created but not
 provisioned. Add a new service by creating its playbook under `ansible/playbooks/`
 (which can include an Ansible role under `ansible/roles/`) and registering it here.
+
+### Role → firewall rules (`deploy/firewall.tf`)
+
+A host gets a PVE firewall rule set only when its `role` is registered in the
+`firewall_rules` map. The rule set is the **complete** inbound rule list for the
+guest (the `.fw` file is replaced wholesale) and defaults to **deny-by-default**
+(each role ends with a `DROP` tail). Management base rules (SSH `22` + ICMP from
+the workstation VLANs 120/132, `192.168.120.0/24` + `192.168.132.0/24`) are
+prepended automatically. Hosts whose role isn't registered keep PVE's default
+ACCEPT (no rules file).
+
+```hcl
+firewall_rules = {
+  adguard = [                  # env-wide DNS: 53 open to all VLANs
+    { type = "in", action = "ACCEPT", proto = "udp", dport = "53", comment = "DNS" },
+    { type = "in", action = "ACCEPT", proto = "tcp", dport = "53", comment = "DNS over TCP" },
+    { type = "in", action = "ACCEPT", proto = "tcp", dport = "3000", source = "192.168.120.0/24,192.168.132.0/24", comment = "Admin UI (mgmt)" },
+    { type = "in", action = "DROP", comment = "Deny other inbound" },
+  ]
+}
+```
+
+Rule fields: `type` (`in`/`out`/`forward`), `action` (`ACCEPT`/`DROP`/`REJECT`),
+`proto`, `dport`/`sport`, `source`/`dest` (IP/network, comma-separated list
+allowed, or an alias/`+ipset` name), `iface`, `log`, `comment`.
 
 ### VLAN registry (`modules/cluster-data/outputs.tf`)
 

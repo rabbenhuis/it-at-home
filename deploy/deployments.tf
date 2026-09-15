@@ -30,8 +30,8 @@ locals {
       vlan_id       = 90
       template_vmid = 9000
       vmid          = 205
-      cores         = 1
-      memory        = 256
+      cores         = 2
+      memory        = 512
       disk_size     = 8
       ip            = "192.168.90.42/24"
       on_boot       = true

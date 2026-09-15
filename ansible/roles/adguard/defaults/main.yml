@@ -21,6 +21,10 @@ adguard_fallback_dns: []
 adguard_filters:
   - name: "AdGuard DNS filter"
     url: "https://adguardteam.github.io/HostlistsRegistry/assets/filter_1.txt"
+  - name: "OISD Big"
+    url: "https://big.oisd.nl/"
+  - name: "Phishing Army"
+    url: "https://phishing.army/download/phishing_army_blocklist_extended.txt"
 
 # Web UI accounts: [{name: admin, password: "<bcrypt hash>"}]. Generate a hash
 # with: htpasswd -nbB admin <password>. Empty list = no authentication.

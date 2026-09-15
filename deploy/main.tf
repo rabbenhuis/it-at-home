@@ -76,6 +76,7 @@ module "deploy_pve1" {
   bridge         = module.cluster.nodes.pve1.bridge
   vlan_id        = each.value.vlan_id
   firewall       = true
+  firewall_rules = length(try(local.firewall_rules[each.value.role], [])) > 0 ? concat(local.firewall_mgmt_base, local.firewall_rules[each.value.role]) : []
   description    = try(each.value.description, "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})")
 }
 
@@ -111,6 +112,7 @@ module "deploy_pve2" {
   bridge         = module.cluster.nodes.pve2.bridge
   vlan_id        = each.value.vlan_id
   firewall       = true
+  firewall_rules = length(try(local.firewall_rules[each.value.role], [])) > 0 ? concat(local.firewall_mgmt_base, local.firewall_rules[each.value.role]) : []
   description    = try(each.value.description, "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})")
 }
 
