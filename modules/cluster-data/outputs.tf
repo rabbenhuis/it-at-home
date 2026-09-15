@@ -57,14 +57,13 @@ output "vlans" {
       nameserver = ["192.168.70.1"]
       dns_zone   = "abbenhuis.internal"
     }
-    # Add your other VLANs here, e.g.:
-    # 80 = {
-    #   name       = "services"
-    #   subnet     = "192.168.80.0/24"
-    #   gateway    = "192.168.80.1"
-    #   nameserver = ["192.168.80.1"]
-    #   dns_zone   = "services.abbenhuis.internal"
-    # }
+    90 = {
+      name       = "infrastructure"
+      subnet     = "192.168.90.0/24"
+      gateway    = "192.168.90.1"
+      nameserver = ["192.168.90.40", "192.168.90.42", "192.168.90.1"]
+      dns_zone   = "infra.abbenhuis.net"
+    }
   }
 }
 

@@ -64,6 +64,16 @@ variable "on_boot" {
   default = true
 }
 
+variable "startup" {
+  description = "Startup/shutdown behavior: { order, up_delay?, down_delay? }. Omit to leave unset."
+  type = object({
+    order      = number
+    up_delay   = optional(number)
+    down_delay = optional(number)
+  })
+  default = null
+}
+
 variable "unprivileged" {
   type    = bool
   default = true

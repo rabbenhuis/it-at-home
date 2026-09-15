@@ -63,6 +63,7 @@ module "deploy_pve1" {
   gateway        = module.cluster.vlans[each.value.vlan_id].gateway
   ssh_keys       = module.cluster.ssh_keys
   on_boot        = try(each.value.on_boot, true)
+  startup        = try(each.value.startup, null)
   unprivileged   = try(each.value.unprivileged, true)
   nesting        = try(each.value.nesting, null)
   fuse           = try(each.value.fuse, null)
@@ -97,6 +98,7 @@ module "deploy_pve2" {
   gateway        = module.cluster.vlans[each.value.vlan_id].gateway
   ssh_keys       = module.cluster.ssh_keys
   on_boot        = try(each.value.on_boot, true)
+  startup        = try(each.value.startup, null)
   unprivileged   = try(each.value.unprivileged, true)
   nesting        = try(each.value.nesting, null)
   fuse           = try(each.value.fuse, null)

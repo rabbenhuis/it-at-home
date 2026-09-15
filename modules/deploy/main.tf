@@ -20,6 +20,15 @@ resource "proxmox_virtual_environment_container" "instance" {
     vm_id = var.template_vmid
   }
 
+  dynamic "startup" {
+    for_each = var.startup != null ? [1] : []
+    content {
+      order      = tostring(var.startup.order)
+      up_delay   = var.startup.up_delay != null ? tostring(var.startup.up_delay) : null
+      down_delay = var.startup.down_delay != null ? tostring(var.startup.down_delay) : null
+    }
+  }
+
   # Blank resource values (0) inherit the corresponding template setting.
   dynamic "cpu" {
     for_each = var.cores > 0 ? [1] : []
@@ -102,6 +111,18 @@ resource "proxmox_virtual_environment_vm" "instance" {
     enabled = true
   }
 
+  dynamic "startup" {
+    for_each = var.startup != null ? [1] : []
+    content {
+      order      = tostring(var.startup.order)
+      up_delay   = var.startup.up_delay != null ? tostring(var.startup.up_delay) : null
+      down_delay = var.startup.down_delay != null ? tostring(var.startup.down_delay) : null
+    }
+  }
+
+  # Blank resource values (0) inherit the corresponding template setting.
+  # Disk is always inherited from the template (overriding disks on a clone
+  # requires restating every disk attribute - provider gotcha).
   dynamic "cpu" {
     for_each = var.cores > 0 ? [1] : []
     content {

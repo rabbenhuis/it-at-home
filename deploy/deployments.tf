@@ -13,6 +13,8 @@
 #   memory        RAM in MB (omit = inherit template)
 #   disk_size     rootfs/disk in GB, LXC only (omit = inherit; VM disk is always inherited)
 #   on_boot       start at host boot (default true)
+#   startup       startup/shutdown order & delays: { order, up_delay?, down_delay? }
+#                 (omit = left unset)
 #   unprivileged  LXC only (default true)
 #   nesting/fuse/keyctl  LXC features (omit = inherit template)
 #   role          service role to apply post-deploy, mapped to an ansible playbook
@@ -22,6 +24,22 @@
 #                 (omit = "Managed by Terraform (deployed from template vmid N)")
 locals {
   deployments = {
+    adguard-sec01 = {
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 90
+      template_vmid = 9000
+      vmid          = 205
+      cores         = 1
+      memory        = 256
+      disk_size     = 8
+      ip            = "192.168.90.42/24"
+      on_boot       = true
+      unprivileged  = true
+      nesting       = false
+      role          = "adguard"
+      description   = "Secundary AdGuard Home DNS blocker (Managed by Terraform)"
+    }
     # web1 = {
     #   type          = "lxc"
     #   target        = "pve1"
@@ -33,6 +51,7 @@ locals {
     #   disk_size     = 16
     #   ip            = "192.168.70.11/24"
     #   on_boot       = true
+    #   startup       = { order = 10, up_delay = 30, down_delay = 30 }
     #   unprivileged  = true
     #   nesting       = true
     #   role          = "adguard"

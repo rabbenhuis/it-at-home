@@ -126,6 +126,7 @@ native HCL types, comments are allowed, and `terraform validate` catches errors:
 | `memory` | RAM in MB (omit = inherit template) |
 | `disk_size` | rootfs/disk in GB, **LXC only** (omit = inherit; VM disk is always inherited) |
 | `on_boot` | start at host boot (default `true`) |
+| `startup` | startup/shutdown order and delays: `{ order, up_delay?, down_delay? }` (omit = unset) |
 | `unprivileged` | LXC only (default `true`) |
 | `nesting`/`fuse`/`keyctl` | LXC features (omit = inherit template) |
 | `role` | service role to apply post-deploy, mapped to an ansible playbook in `deploy/roles.tf` (e.g. `adguard`, `unbound`, `haos`); omit = skip |
