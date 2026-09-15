@@ -19,8 +19,12 @@ def resolve_host(host):
             msg = json.loads(line)
         except Exception:
             continue
-        for rc in msg.get("resource_changes") or []:
-            m = re.match(r'^(module\.deploy_pve[12])\["([^"]+)"\]', rc.get("address", ""))
+        if msg.get("type") == "planned_change":
+            addrs = [(msg.get("change") or {}).get("resource", {}).get("addr", "")]
+        else:
+            addrs = [rc.get("address", "") for rc in (msg.get("resource_changes") or [])]
+        for addr in addrs:
+            m = re.match(r'^(module\.deploy_pve[12])\["([^"]+)"\]', addr)
             if m and m.group(2) == host:
                 print(f'{m.group(1)}["{host}"]')
                 return

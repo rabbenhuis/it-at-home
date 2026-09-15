@@ -35,10 +35,13 @@ locals {
       disk_size     = 8
       ip            = "192.168.90.42/24"
       on_boot       = true
+      startup       = { order = 20, up_delay = 15, down_delay = 60 }
       unprivileged  = true
       nesting       = false
+      keyctl        = false
+      fuse          = false
       role          = "adguard"
-      description   = "Secundary AdGuard Home DNS blocker (Managed by Terraform)"
+      description   = "Secondary AdGuard Home DNS blocker (Managed by Terraform)"
     }
     # web1 = {
     #   type          = "lxc"

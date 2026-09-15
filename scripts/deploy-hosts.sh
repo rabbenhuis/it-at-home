@@ -50,13 +50,13 @@ if [[ ! -d .terraform ]]; then
 fi
 
 # Resolve the module address for a host, e.g. module.deploy_pve1["web1"].
-# Tries the last terraform plan first (covers hosts not yet in state), then
-# falls back to terraform state list (covers already-applied, unchanged hosts).
+# Tries terraform state list first (cheap, no API; covers already-applied
+# hosts), then a terraform plan (covers hosts not yet in state).
 resolve_host() {
   local host="$1" addr=""
-  addr=$(terraform plan -no-color -json 2>/dev/null | python3 "$HELPER" resolve "$host" || true)
+  addr=$(terraform state list 2>/dev/null | grep -oE 'module\.deploy_pve[12]\["'"$host"'"\]' | head -1 || true)
   if [[ -z "$addr" ]]; then
-    addr=$(terraform state list 2>/dev/null | grep -oE 'module\.deploy_pve[12]\["'"$host"'"\]' | head -1 || true)
+    addr=$(terraform plan -no-color -json 2>/dev/null | python3 "$HELPER" resolve "$host" || true)
   fi
   if [[ -z "$addr" ]]; then
     echo "ERROR: could not determine which node host '$host' is on (is it in deploy/deployments.tf?)" >&2

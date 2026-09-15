@@ -132,6 +132,26 @@ native HCL types, comments are allowed, and `terraform validate` catches errors:
 | `role` | service role to apply post-deploy, mapped to an ansible playbook in `deploy/roles.tf` (e.g. `adguard`, `unbound`, `haos`); omit = skip |
 | `description` | free-form note shown in the Proxmox container/VM notes field (omit = `Managed by Terraform (deployed from template vmid N)`) |
 
+A complete entry looks like:
+
+```hcl
+adguard-sec01 = {
+  type          = "lxc"
+  target        = "pve1"
+  vlan_id       = 90
+  template_vmid = 9000
+  vmid          = 205
+  cores         = 1
+  memory        = 256
+  disk_size     = 8
+  ip            = "192.168.90.42/24"
+  on_boot       = true
+  startup       = { order = 20, up_delay = 15, down_delay = 60 }
+  role          = "adguard"
+  description   = "Secondary AdGuard Home DNS blocker"
+}
+```
+
 ### Role → playbook mapping (`deploy/roles.tf`)
 
 The `role` field is a service/application name; `deploy/roles.tf` maps it to an
@@ -166,6 +186,45 @@ vlans = {
 }
 ```
 
+### Module inputs (`modules/deploy`)
+
+Each deployment map entry maps 1:1 onto this module's inputs (values marked
+"registry" come from `modules/cluster-data` via the host's `vlan_id`/`target`,
+not from the map):
+
+| Variable | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `name` | string | – | host name (map key) |
+| `type` | string | – | `"lxc"` or `"vm"` |
+| `vmid` | number | – | container/VM VMID |
+| `template_vmid` | number | – | template to clone: 9000 native / 9010 podman / 9020 docker / 9200 vm |
+| `hostname` | string | – | short hostname (from map key) |
+| `ip` | string | – | static IPv4 in CIDR (from map) |
+| `vlan_id` | number | – | VLAN ID (from map; gateway/nameserver/search-domain resolved from the VLAN registry) |
+| `node_name` | string | – | PVE node (registry: `nodes[pve1/pve2].node_name`) |
+| `architecture` | string | `amd64` | CPU architecture, LXC (registry) |
+| `nameserver` | list(string) | – | DNS servers (registry: `vlans[id].nameserver`) |
+| `searchdomain` | string | – | DNS search domain (registry: `vlans[id].dns_zone`) |
+| `gateway` | string | – | IPv4 gateway (registry: `vlans[id].gateway`) |
+| `disk_datastore` | string | `local-lvm` | rootfs/disk datastore, LXC (registry) |
+| `bridge` | string | `vmbr0` | network bridge (registry) |
+| `ssh_keys` | list(string) | `[]` | keys injected via cloud-init, VM only (registry) |
+| `on_boot` | bool | `true` | start at host boot (map, default `true`) |
+| `startup` | object | `null` | `{ order, up_delay?, down_delay? }`; omit = unset (map) |
+| `unprivileged` | bool | `true` | unprivileged container, LXC only (map) |
+| `nesting`/`fuse`/`keyctl` | bool | `null` | LXC features; `null` = inherit template (map) |
+| `cores` | number | `0` | CPU cores; `0` = inherit template (map) |
+| `memory` | number | `0` | RAM in MB; `0` = inherit template (map) |
+| `swap` | number | `0` | swap in MB, LXC (map) |
+| `disk_size` | number | `0` | rootfs/disk in GB, **LXC only**; `0` = inherit template (map; VM disk always inherited) |
+| `firewall` | bool | `true` | enable the PVE firewall on the NIC |
+| `description` | string | `Managed by Terraform (deployed)` | shown in the PVE notes field (map) |
+
+The `deploy/` config also exposes a `hosts` output mapping every host in
+`deployments.tf` to its `type`, `target`, `vlan_id`, `vmid`, `ip` and resolved
+`playbook`; `scripts/deploy-hosts.sh` uses it to decide which hosts to
+provision and over which SSH user.
+
 ### Deploying
 
 ```bash
@@ -178,10 +237,10 @@ vlans = {
 
 Scoped deploys use `terraform apply -target` so hosts outside the scope are
 **never touched** (the map stays the full desired state). Ansible provisioning
-runs only for hosts in scope that set a `playbook`. SSH users are chosen by
-type: `ansible` for LXC (baked into the templates), `debian` for VMs
-(cloud-init). Requires the same `TF_VAR_pm_api_token_*` env vars as the
-template pipeline.
+runs only for hosts in scope that set a `role` (resolved to a playbook via
+`deploy/roles.tf`). SSH users are chosen by type: `ansible` for LXC (baked
+into the templates), `debian` for VMs (cloud-init). Requires the same
+`TF_VAR_pm_api_token_*` env vars as the template pipeline.
 
 ## Terraform
 
@@ -205,6 +264,14 @@ of:
 - `base_template_file` (e.g. `nas:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst`)
   to create from an upstream template
 - `base_clone_id` to clone from a previously built template
+
+### Module inputs (`modules/vm-template`)
+
+`name`, `template_version`, `vmid`, `node_name`, `hostname`, `cloud_image_file_id`,
+`nameserver`, `searchdomain`, `ip`, `gateway`, `ssh_keys`, `cores`, `memory`,
+`disk_size`, `disk_datastore`, `bridge`, `vlan_id`, `firewall`, `ostype`. The
+VM is created from `cloud_image_file_id` (static `nas:import/...` reference per
+node) with cloud-init, `agent` enabled, and `stop_on_destroy` set.
 
 ### Manual apply (instead of the script)
 
