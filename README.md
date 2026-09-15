@@ -240,9 +240,9 @@ provision and over which SSH user.
 Scoped deploys use `terraform apply -target` so hosts outside the scope are
 **never touched** (the map stays the full desired state). Ansible provisioning
 runs only for hosts in scope that set a `role` (resolved to a playbook via
-`deploy/roles.tf`). SSH users are chosen by type: `ansible` for LXC (baked
-into the templates), `debian` for VMs (cloud-init). Requires the same
-`TF_VAR_pm_api_token_*` env vars as the template pipeline.
+`deploy/roles.tf`). SSH always connects as the `ansible` user (baked into both
+LXC and VM templates by the base role, with passwordless sudo). Requires the
+same `TF_VAR_pm_api_token_*` env vars as the template pipeline.
 
 ## Terraform
 

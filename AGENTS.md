@@ -16,7 +16,7 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 
 ## Deployments (deploy/)
 
-`deploy/` is a **separate Terraform config** (own statefile) that clones hosts from the built templates. Source of truth is the **deployment map** `deploy/deployments.tf` (HCL, one entry per host — not a CSV). `scripts/deploy-hosts.sh` runs `terraform apply` then ansible per host; a `role` field is mapped to an ansible playbook via `deploy/roles.tf` (SSH user: `ansible` for lxc, `debian` for vm).
+`deploy/` is a **separate Terraform config** (own statefile) that clones hosts from the built templates. Source of truth is the **deployment map** `deploy/deployments.tf` (HCL, one entry per host — not a CSV). `scripts/deploy-hosts.sh` runs `terraform apply` then ansible per host; a `role` field is mapped to an ansible playbook via `deploy/roles.tf`. Provisioning always connects as the `ansible` user (baked into both LXC and VM templates by the base role).
 
 - Per-node/per-host scope (`pve1|pve2`, `--hosts a,b`) must be done with **`-target`** (script already does this). Do **not** implement scoping by filtering `for_each`/`count` on the map — that destroys hosts left out of the scope.
 - Gateway/nameserver/search-domain come from the `vlans` registry in `modules/cluster-data` (keyed by VLAN ID); hosts only set `vlan_id`.

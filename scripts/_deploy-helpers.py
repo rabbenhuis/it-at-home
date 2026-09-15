@@ -2,8 +2,8 @@
 """Helpers for scripts/deploy-hosts.sh.
 
 Reads JSON from stdin; usage:
-  python3 _deploy-helpers.py resolve <host>   # module address for a host (plan JSON)
-  python3 _deploy-helpers.py provision <target> <hosts>  # hosts to provision (hosts output JSON)
+  python3 _deploy-helpers.py resolve <host>    # module address for a host (plan JSON)
+  python3 _deploy-helpers.py provision <target> <hosts>  # hosts to provision (console JSON)
 """
 import json
 import re
@@ -30,9 +30,13 @@ def resolve_host(host):
                 return
 
 
-def provision_plan(target, hosts_arg):
+def provision(target, hosts_arg):
+    # Input is terraform console output: a single JSON-encoded string (jsonencode).
+    raw = sys.stdin.read().strip()
     try:
-        hosts = json.load(sys.stdin)
+        hosts = json.loads(raw)
+        if isinstance(hosts, str):
+            hosts = json.loads(hosts)
     except Exception:
         hosts = {}
     want = set(x for x in hosts_arg.split(",") if x) if hosts_arg else None
@@ -52,6 +56,6 @@ if __name__ == "__main__":
     if cmd == "resolve":
         resolve_host(sys.argv[2])
     elif cmd == "provision":
-        provision_plan(sys.argv[2], sys.argv[3])
+        provision(sys.argv[2], sys.argv[3])
     else:
         sys.exit(2)

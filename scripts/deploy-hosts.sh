@@ -90,17 +90,18 @@ log "Applying (${TARGET_ARGS[*]:-all hosts})"
 terraform apply -auto-approve "${TARGET_ARGS[@]}"
 
 # Ansible provisioning for the hosts in this run's scope that specify a playbook.
-# SSH users: lxc -> ansible (baked into the templates), vm -> debian (cloud-init).
+# SSH user is always `ansible`: baked into the templates (LXC and VM) by the
+# base role, with passwordless sudo. Computed from the config (terraform console)
+# rather than `terraform output`, because `-target` applies never persist
+# outputs in the state file.
 provision_plan() {
-  terraform output -json hosts 2>/dev/null | python3 "$HELPER" provision "$TARGET" "$HOSTS"
+  local expr='jsonencode({ for name, h in local.deployments : name => { type = h.type, target = h.target, ip = h.ip, playbook = try(local.roles[try(h.role, "")], "") } })'
+  terraform console -no-color <<< "$expr" | python3 "$HELPER" provision "$TARGET" "$HOSTS"
 }
 
 while IFS='|' read -r name type ip playbook; do
   [[ -z "$name" ]] && continue
-  case "$type" in
-    vm) user=debian ;;
-    *)  user=ansible ;;
-  esac
+  user=ansible
 
   log "Provisioning $name ($type, $ip) with $playbook as $user"
   ssh-keygen -R "$ip" >/dev/null 2>&1 || true

@@ -19,18 +19,25 @@
     dest: "{{ adguard_install_dir }}"
     remote_src: true
     creates: "{{ adguard_install_dir }}/AdGuardHome"
+    extra_opts:
+      - "--strip-components=1"
 
 - name: Remove downloaded archive
   ansible.builtin.file:
     path: "/tmp/AdGuardHome_linux_{{ adguard_arch }}.tar.gz"
     state: absent
 
+- name: Check whether systemd-resolved is present
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/systemd-resolved.service
+  register: adguard_resolved_unit
+
 - name: Disable systemd-resolved stub listener (frees port 53)
   ansible.builtin.systemd:
     name: systemd-resolved
     enabled: false
     state: stopped
-  ignore_errors: true
+  when: adguard_resolved_unit.stat.exists
 
 - name: Write AdGuard Home configuration
   ansible.builtin.template:
