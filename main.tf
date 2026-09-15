@@ -237,7 +237,6 @@ module "template_vm" {
   vlan_id             = local.node.vlan_id
   firewall            = true
   ostype              = "l26"
-  architecture        = local.node.architecture
 }
 
 output "native_ip" {

@@ -86,8 +86,3 @@ variable "ostype" {
   type    = string
   default = "l26"
 }
-
-variable "architecture" {
-  type    = string
-  default = "amd64"
-}
