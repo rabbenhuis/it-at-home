@@ -20,8 +20,13 @@ locals {
     { type = "in", action = "ACCEPT", proto = "icmp", comment = "ICMP (mgmt)" },
   ]
 
-  # AdGuard Home servers: the only clients allowed to query the unbound resolver.
-  adguard_dns_servers = ["192.168.90.40", "192.168.90.42"]
+  # AdGuard Home servers: the only clients allowed to query the unbound
+  # resolver. Rendered into the cluster-level ipset 'adguard-servers' and used
+  # as the source of the unbound rules.
+  adguard_dns_servers = [
+    { ip = "192.168.90.40", name = "adguard-pri01" },
+    { ip = "192.168.90.42", name = "adguard-sec01" },
+  ]
 
   # VLANs that may query the AdGuard DNS servers (all AdGuard-served VLANs;
   # guest 142 uses the router's DNS). Rendered into a cluster-level ipset
@@ -47,10 +52,10 @@ locals {
       # Base listener on 53 plus the per-view instances on 5353-5357.
       { type  = "in", action = "ACCEPT", proto = "udp",
         dport = "53,5353,5354,5355,5356,5357",
-      source = join(",", local.adguard_dns_servers), comment = "DNS + views (AdGuard)" },
+      source = "+adguard-servers", comment = "DNS + views (AdGuard)" },
       { type  = "in", action = "ACCEPT", proto = "tcp",
         dport = "53,5353,5354,5355,5356,5357",
-      source = join(",", local.adguard_dns_servers), comment = "DNS + views over TCP (AdGuard)" },
+      source = "+adguard-servers", comment = "DNS + views over TCP (AdGuard)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     # haos: add when a Home Assistant host is deployed (e.g. tcp 80/443/8123 from mgmt).

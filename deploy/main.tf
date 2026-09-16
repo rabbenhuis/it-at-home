@@ -51,6 +51,7 @@ module "deploy_pve1" {
   depends_on = [
     proxmox_virtual_environment_firewall_ipset.adguard_dns_sources,
     proxmox_virtual_environment_firewall_ipset.mgmt_sources,
+    proxmox_virtual_environment_firewall_ipset.adguard_servers,
   ]
 
   for_each = local.pve1_hosts
@@ -92,6 +93,7 @@ module "deploy_pve2" {
   depends_on = [
     proxmox_virtual_environment_firewall_ipset.adguard_dns_sources,
     proxmox_virtual_environment_firewall_ipset.mgmt_sources,
+    proxmox_virtual_environment_firewall_ipset.adguard_servers,
   ]
 
   for_each = local.pve2_hosts

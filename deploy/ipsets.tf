@@ -32,3 +32,19 @@ resource "proxmox_virtual_environment_firewall_ipset" "mgmt_sources" {
     }
   }
 }
+
+# AdGuard node IPs - the only sources allowed to query the unbound resolvers.
+resource "proxmox_virtual_environment_firewall_ipset" "adguard_servers" {
+  provider = proxmox.pve1
+
+  name    = "adguard-servers"
+  comment = "AdGuard Home servers (may query the unbound resolvers)"
+
+  dynamic "cidr" {
+    for_each = local.adguard_dns_servers
+    content {
+      name    = cidr.value.ip
+      comment = cidr.value.name
+    }
+  }
+}
