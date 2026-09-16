@@ -7,10 +7,10 @@
 # dport/sport, source/dest (IP/network, comma-separated list allowed), iface,
 # log, comment. `source`/`dest` can reference an alias or '+ipsetname'.
 locals {
-  # Workstation (WSL on Windows) is on VLAN 120 wired, VLAN 132 Wi-Fi.
+  # Workstation (WSL on Windows) is on VLAN 120 wired, VLAN 122 Wi-Fi.
   firewall_mgmt_sources = [
     module.cluster.vlans[120].subnet,
-    module.cluster.vlans[132].subnet,
+    module.cluster.vlans[122].subnet,
   ]
 
   firewall_mgmt_base = [
