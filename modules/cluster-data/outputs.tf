@@ -86,7 +86,7 @@ output "vlans" {
       name       = "infrastructure"
       subnet     = "192.168.90.0/24"
       gateway    = "192.168.90.1"
-      nameserver = ["192.168.90.40", "192.168.90.42", "192.168.90.1"]
+      nameserver = ["192.168.90.40", "192.168.90.42"]
       dns_zone   = "infra.abbenhuis.net"
     }
     95 = {
@@ -123,6 +123,34 @@ output "vlans" {
       gateway    = "192.168.132.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
       dns_zone   = "clients.abbenhuis.net"
+    }
+    142 = {
+      name       = "Guest WLAN"
+      subnet     = "192.168.142.0/24"
+      gateway    = "192.168.142.1"
+      nameserver = ["192.168.142.1"]
+      dns_zone   = "guest.abbenhuis.net"
+    }
+    150 = {
+      name       = "IoT Platform"
+      subnet     = "192.168.150.0/24"
+      gateway    = "192.168.150.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "iot-platform.abbenhuis.net"
+    }
+    152 = {
+      name       = "IoT Devices"
+      subnet     = "192.168.152.0/24"
+      gateway    = "192.168.152.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "iot.abbenhuis.net"
+    }
+    160 = {
+      name       = "Gaming"
+      subnet     = "192.168.160.0/24"
+      gateway    = "192.168.160.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "gaming.abbenhuis.net"
     }
   }
 }
