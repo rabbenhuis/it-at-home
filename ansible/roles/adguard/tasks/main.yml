@@ -46,7 +46,33 @@
     mode: "0644"
     owner: root
     group: root
-  notify: restart AdGuardHome
+  # AdGuard normalizes/migrates the file on start (e.g. schema_version 29->34),
+  # so the template diff always shows 'changed'. The restart is decided below
+  # by comparing the hash of OUR rendered config instead.
+  changed_when: false
+
+- name: Hash rendered configuration
+  ansible.builtin.command: sha256sum "{{ adguard_install_dir }}/AdGuardHome.yaml"
+  register: adguard_config_hash
+  changed_when: false
+
+- name: Read previous configuration hash
+  ansible.builtin.slurp:
+    path: "{{ adguard_install_dir }}/.config-hash"
+  register: adguard_prev_hash
+  failed_when: false
+
+- name: Persist configuration hash
+  ansible.builtin.copy:
+    content: "{{ adguard_config_hash.stdout.split(' ')[0] }}\n"
+    dest: "{{ adguard_install_dir }}/.config-hash"
+    mode: "0644"
+
+- name: Restart AdGuard Home on configuration change
+  ansible.builtin.systemd:
+    name: AdGuardHome
+    state: restarted
+  when: (adguard_prev_hash.content | default("") | b64decode | trim) != adguard_config_hash.stdout.split(" ")[0]
 
 - name: Install AdGuard Home systemd unit
   ansible.builtin.template:

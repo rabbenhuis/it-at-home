@@ -75,8 +75,15 @@ dns:
   bootstrap_prefer_ipv4: false
   upstream_timeout: 10s
   private_networks: []
-  use_private_ptr_resolvers: false
-  local_ptr_upstreams: []
+  use_private_ptr_resolvers: {{ adguard_use_private_ptr_resolvers | ternary('true', 'false') }}
+  local_ptr_upstreams:
+{% if adguard_local_ptr_upstreams %}
+{% for u in adguard_local_ptr_upstreams %}
+    - {{ u }}
+{% endfor %}
+{% else %}
+    []
+{% endif %}
   use_dns64: false
   dns64_prefixes: []
   serve_http3: false
@@ -149,7 +156,23 @@ filtering:
   blocking_mode: {{ adguard_filtering_blocking_mode }}
   parental_enabled: {{ adguard_parental_enabled | ternary('true', 'false') }}
   safesearch_enabled: {{ adguard_safe_search_enabled | ternary('true', 'false') }}
-  rewrites: []
+  rewrites:
+{% if adguard_rewrites or adguard_devices %}
+{% for r in adguard_rewrites %}
+    - domain: {{ r.domain }}
+      answer: {{ r.answer }}
+{% endfor %}
+{% for d in adguard_devices %}
+    - domain: {{ d.hostname }}.{{ adguard_device_zone }}
+      answer: {{ d.ip }}
+{% for a in d.aliases | default([]) %}
+    - domain: {{ a }}
+      answer: {{ d.hostname }}.{{ adguard_device_zone }}
+{% endfor %}
+{% endfor %}
+{% else %}
+    []
+{% endif %}
   safebrowsing_enabled: {{ adguard_safe_browsing_enabled | ternary('true', 'false') }}
   protection_enabled: {{ adguard_protection_enabled | ternary('true', 'false') }}
   filtering_https_enabled: false

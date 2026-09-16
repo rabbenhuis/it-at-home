@@ -13,3 +13,24 @@ unbound_allowed_clients:
 unbound_qname_minimisation: true
 unbound_cache_min_ttl: 300
 unbound_cache_max_ttl: 86400
+
+# Static reverse (PTR) records so AdGuard shows fixed-IP clients by hostname
+# via rDNS. Grouped per VLAN; the reverse zone is derived as
+# <vlan>.168.192.in-addr.arpa. (assumes a /24 in 192.168.0.0/16). Each
+# local-data-ptr also adds the A record for the name.
+# Add a group for each VLAN with fixed-IP clients (37/70/75/80/90/95/100/115/120/132/150):
+unbound_local_ptrs:
+  - vlan: 90
+    records:
+      - ip: "192.168.90.42"
+        name: "adguard-sec01.infra.abbenhuis.net"
+      - ip: "192.168.90.43"
+        name: "unbound-sec01.infra.abbenhuis.net"
+  - vlan: 100
+    records:
+      - ip: "192.168.100.50"
+        name: "nas.abbenhuis.net"
+  # - vlan: 90
+  #   records:
+  #     - ip: "192.168.90.50"
+  #       name: "myhost.infra.abbenhuis.net"

@@ -29,6 +29,12 @@ server:
 	cache-min-ttl: {{ unbound_cache_min_ttl }}
 	cache-max-ttl: {{ unbound_cache_max_ttl }}
 	harden-dnssec-stripped: yes
+{% for z in unbound_local_ptrs %}
+	local-zone: "{{ z.vlan }}.168.192.in-addr.arpa." static
+{% for r in z.records %}
+	local-data-ptr: "{{ r.ip }} {{ r.name }}"
+{% endfor %}
+{% endfor %}
 
 remote-control:
 	control-enable: yes

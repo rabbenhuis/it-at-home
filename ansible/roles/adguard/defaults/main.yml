@@ -12,11 +12,18 @@ adguard_dns_listen: "0.0.0.0"
 adguard_dns_port: 53
 
 adguard_upstream_dns:
-  - 192.168.90.41
+  # 192.168.90.41 # primary unbound (to be deployed)
   - 192.168.90.43
 # Upstreams are plain-IP (no hostnames), so no bootstrap/fallback DNS is needed.
 adguard_bootstrap_dns: []
 adguard_fallback_dns: []
+
+# Private (RFC1918) reverse lookups - including AdGuard's client rDNS - are
+# routed to these "private reverse DNS servers" (not the main upstreams), so
+# static PTRs served by unbound resolve here. Enable + point at unbound.
+adguard_use_private_ptr_resolvers: true
+adguard_local_ptr_upstreams:
+  - 192.168.90.43
 
 adguard_filters:
   - name: "AdGuard DNS filter"
@@ -25,6 +32,29 @@ adguard_filters:
     url: "https://big.oisd.nl/"
   - name: "Phishing Army"
     url: "https://phishing.army/download/phishing_army_blocklist_extended.txt"
+
+# Static DNS records served by AdGuard (override upstream). `answer` can be an
+# IP address (A/AAAA record) or another hostname (CNAME record). E.g.
+#   - {domain: "nas.abbenhuis.internal", answer: "192.168.90.10"}            # A
+#   - {domain: "adguard.abbenhuis.internal", answer: "adguard-sec01.infra.abbenhuis.net"}  # CNAME
+adguard_rewrites: []
+
+# Device registry: each device gets an A record (<hostname>.<zone> -> ip) and
+# its aliases (full domain names) become CNAMEs pointing at that A record. The
+# `mac` is metadata for the router's DHCP reservation (so the device actually
+# gets `ip`) - the router hands out addresses, AdGuard only serves the DNS.
+#   - hostname: "nas"
+#     mac: "aa:bb:cc:dd:ee:ff"
+#     ip: "192.168.90.10"
+#     aliases: ["files.abbenhuis.net", "backup.abbenhuis.net"]
+adguard_device_zone: "abbenhuis.net"
+adguard_devices:
+  - hostname: "nas"
+    mac: "00:08:9B:C4:88:A8"
+    ip: "192.168.100.50"
+    aliases:
+      - "maximus.abbenhuis.net"
+      - "file-server.abbenhuis.net"
 
 # Web UI accounts: [{name: admin, password: "<bcrypt hash>"}]. Generate a hash
 # with: htpasswd -nbB admin <password>. Empty list = no authentication.
