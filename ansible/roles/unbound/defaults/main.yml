@@ -14,6 +14,83 @@ unbound_qname_minimisation: true
 unbound_cache_min_ttl: 300
 unbound_cache_max_ttl: 86400
 
+# ---------------------------------------------------------------------------
+# DNS views: separate unbound instances, one per view, each on its own port.
+# AdGuard routes VLANs to the right view via per-client upstreams. Internal
+# records live here (per view), not in AdGuard rewrites, so each VLAN only
+# resolves the names its view allows. All view instances allow only the
+# AdGuard servers (unbound_allowed_clients) and do normal recursion + DNSSEC.
+# ---------------------------------------------------------------------------
+
+# Full internal record set (internal-full + iot-platform views).
+unbound_records_full:
+  - { type: "A", name: "router.mgmt.abbenhuis.internal", value: "192.168.37.1" }
+  - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
+  - { type: "A", name: "bm-pve-prd-01.abbenhuis.internal", value: "192.168.70.64" }
+  - { type: "A", name: "mta.abbenhuis.internal", value: "192.168.100.66" }
+  - { type: "A", name: "home-assistant.abbenhuis.internal", value: "192.168.100.70" }
+  - { type: "A", name: "mqtt.abbenhuis.internal", value: "192.168.100.71" }
+  - { type: "A", name: "matter-server.abbenhuis.internal", value: "192.168.100.72" }
+  - { type: "A", name: "zigbee2mqtt.abbenhuis.internal", value: "192.168.100.73" }
+  - { type: "A", name: "mqtt-explorer.abbenhuis.internal", value: "192.168.100.75" }
+  - { type: "A", name: "bm-cp-prd-001.abbenhuis.internal", value: "192.168.100.5" }
+  - { type: "A", name: "maximus.abbenhuis.internal", value: "192.168.100.50" }
+  - { type: "A", name: "dongle-m.abbenhuis.internal", value: "192.168.150.10" }
+  - { type: "A", name: "printer.iot.abbenhuis.internal", value: "192.168.152.45" }
+  - { type: "A", name: "scanner.iot.abbenhuis.internal", value: "192.168.152.46" }
+  - { type: "A", name: "nas.abbenhuis.net", value: "192.168.100.50" }
+  - { type: "A", name: "adguard-pri01.infra.abbenhuis.net", value: "192.168.90.40" }
+  - { type: "A", name: "unbound-pri01.infra.abbenhuis.net", value: "192.168.90.41" }
+  - { type: "A", name: "adguard-sec01.infra.abbenhuis.net", value: "192.168.90.42" }
+  - { type: "A", name: "unbound-sec01.infra.abbenhuis.net", value: "192.168.90.43" }
+
+unbound_cnames_full:
+  - { type: "CNAME", name: "nas.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
+  - { type: "CNAME", name: "file-server.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
+  - { type: "CNAME", name: "maximus.abbenhuis.net", value: "nas.abbenhuis.net" }
+  - { type: "CNAME", name: "file-server.abbenhuis.net", value: "nas.abbenhuis.net" }
+
+unbound_ptr_full:
+  - { ip: "192.168.90.40", name: "adguard-pri01.infra.abbenhuis.net" }
+  - { ip: "192.168.90.41", name: "unbound-pri01.infra.abbenhuis.net" }
+  - { ip: "192.168.90.42", name: "adguard-sec01.infra.abbenhuis.net" }
+  - { ip: "192.168.90.43", name: "unbound-sec01.infra.abbenhuis.net" }
+  - { ip: "192.168.100.50", name: "nas.abbenhuis.net" }
+
+# Limited internal set for the client VLANs (NAS, printer, scanner, HA).
+unbound_records_limited:
+  - { type: "A", name: "home-assistant.abbenhuis.internal", value: "192.168.100.70" }
+  - { type: "A", name: "maximus.abbenhuis.internal", value: "192.168.100.50" }
+  - { type: "A", name: "printer.iot.abbenhuis.internal", value: "192.168.152.45" }
+  - { type: "A", name: "scanner.iot.abbenhuis.internal", value: "192.168.152.46" }
+  - { type: "A", name: "nas.abbenhuis.net", value: "192.168.100.50" }
+  - { type: "CNAME", name: "nas.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
+  - { type: "CNAME", name: "file-server.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
+  - { type: "CNAME", name: "maximus.abbenhuis.net", value: "nas.abbenhuis.net" }
+  - { type: "CNAME", name: "file-server.abbenhuis.net", value: "nas.abbenhuis.net" }
+
+unbound_views:
+  internal-full:
+    port: 5353
+    records: "{{ unbound_records_full + unbound_cnames_full }}"
+    ptr_records: "{{ unbound_ptr_full }}"
+  internal-limited:
+    port: 5354
+    records: "{{ unbound_records_limited }}"
+    ptr_records: []
+  iot-platform:
+    port: 5355
+    records: "{{ unbound_records_full + unbound_cnames_full }}"
+    ptr_records: "{{ unbound_ptr_full }}"
+  iot-limited:
+    port: 5356
+    records: []
+    ptr_records: []
+  gaming-limited:
+    port: 5357
+    records: []
+    ptr_records: []
+
 # Static reverse (PTR) records so AdGuard shows fixed-IP clients by hostname
 # via rDNS. Grouped per VLAN; the reverse zone is derived as
 # <vlan>.168.192.in-addr.arpa. (assumes a /24 in 192.168.0.0/16). Each

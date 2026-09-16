@@ -37,8 +37,9 @@ adguard_filters:
 # IP address (A/AAAA record) or another hostname (CNAME record). E.g.
 #   - {domain: "nas.abbenhuis.internal", answer: "192.168.90.10"}            # A
 #   - {domain: "adguard.abbenhuis.internal", answer: "adguard-sec01.infra.abbenhuis.net"}  # CNAME
-adguard_rewrites:
-  - { domain: "bm-pve-prd-01.abbenhuis.internal", answer: "192.168.70.64" }
+# NOTE: internal records now live in the unbound per-view data (ansible/roles/
+# unbound), NOT here - global rewrites would bypass the per-VLAN DNS views.
+adguard_rewrites: []
 
 # Device registry: each device gets an A record (<hostname>.<zone> -> ip) and
 # its aliases (full domain names) become CNAMEs pointing at that A record. The
@@ -48,14 +49,32 @@ adguard_rewrites:
 #     mac: "aa:bb:cc:dd:ee:ff"
 #     ip: "192.168.90.10"
 #     aliases: ["files.abbenhuis.net", "backup.abbenhuis.net"]
+# NOTE: device records have moved into the unbound per-view data (see unbound role).
 adguard_device_zone: "abbenhuis.net"
-adguard_devices:
-  - hostname: "nas"
-    mac: "00:08:9B:C4:88:A8"
-    ip: "192.168.100.50"
-    aliases:
-      - "maximus.abbenhuis.net"
-      - "file-server.abbenhuis.net"
+adguard_devices: []
+
+# DNS views: route each VLAN's queries to a specific unbound view instance via
+# per-client upstreams. `ids` are the VLAN subnets; `port` matches the unbound
+# view port (see unbound role). use_global_settings=true keeps global filtering.
+adguard_view_upstream_servers:
+  - 192.168.90.41
+  - 192.168.90.43
+adguard_view_clients:
+  - { name: "view-internal-full",
+      ids: ["192.168.37.0/24", "192.168.70.0/24", "192.168.75.0/24", "192.168.80.0/24", "192.168.90.0/24", "192.168.95.0/24", "192.168.100.0/24", "192.168.115.0/24"],
+      port: 5353 }
+  - { name: "view-internal-limited",
+      ids: ["192.168.120.0/24", "192.168.122.0/24", "192.168.132.0/24"],
+      port: 5354 }
+  - { name: "view-iot-platform",
+      ids: ["192.168.150.0/24"],
+      port: 5355 }
+  - { name: "view-iot-limited",
+      ids: ["192.168.152.0/24"],
+      port: 5356 }
+  - { name: "view-gaming-limited",
+      ids: ["192.168.160.0/24"],
+      port: 5357 }
 
 # Web UI accounts: [{name: admin, password: "<bcrypt hash>"}]. Generate a hash
 # with: htpasswd -nbB admin <password>. Empty list = no authentication.

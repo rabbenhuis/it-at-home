@@ -202,6 +202,29 @@ Rule fields: `type` (`in`/`out`/`forward`), `action` (`ACCEPT`/`DROP`/`REJECT`),
 `proto`, `dport`/`sport`, `source`/`dest` (IP/network, comma-separated list
 allowed, or an alias/`+ipset` name), `iface`, `log`, `comment`.
 
+### DNS views (per-VLAN internal record visibility)
+
+AdGuard Home has no DNS views, so internal record visibility is implemented in
+unbound. Each `unbound` host runs one unbound instance per view on a dedicated
+port; AdGuard routes each VLAN to the right view via **per-client upstreams**
+(`clients.persistent`), keeping global blocklist filtering in AdGuard.
+
+| View | Port | VLANs | Internal records |
+|------|------|-------|------------------|
+| `internal-full` | 5353 | 37, 70, 75, 80, 90, 95, 100, 115 | full set |
+| `internal-limited` | 5354 | 120, 122, 132 | NAS, printer, scanner, HA |
+| `iot-platform` | 5355 | 150 | full set + IoT |
+| `iot-limited` | 5356 | 152 | none |
+| `gaming-limited` | 5357 | 160 | none |
+
+- Internal records live in the **unbound** role (`unbound_records_full`,
+  `unbound_records_limited`, `unbound_views`) — **not** in AdGuard rewrites
+  (global rewrites would bypass the views).
+- VLAN→view routing is defined in the **adguard** role (`adguard_view_clients`,
+  matching the unbound view ports).
+- Add a record: add it to the right unbound record set, then re-run both
+  playbooks.
+
 ### VLAN registry (`modules/cluster-data/outputs.tf`)
 
 The `vlans` output is the single source of truth for every VLAN. Each entry

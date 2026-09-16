@@ -1,0 +1,13 @@
+[Unit]
+Description=Unbound DNS view %i
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/sbin/unbound -d -c /etc/unbound/views/%i.conf
+Restart=always
+RestartSec=5
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

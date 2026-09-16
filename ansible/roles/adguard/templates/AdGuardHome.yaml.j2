@@ -186,7 +186,23 @@ clients:
     rdns: true
     dhcp: true
     hosts: true
-  persistent: []
+  persistent:
+{% if adguard_view_clients %}
+{% for vc in adguard_view_clients %}
+    - name: {{ vc.name }}
+      ids:
+{% for id in vc.ids %}
+        - {{ id }}
+{% endfor %}
+      upstreams:
+{% for srv in adguard_view_upstream_servers %}
+        - {{ srv }}:{{ vc.port }}
+{% endfor %}
+      use_global_settings: true
+{% endfor %}
+{% else %}
+    []
+{% endif %}
 
 os:
   group: ""

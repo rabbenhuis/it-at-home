@@ -1,0 +1,57 @@
+# Managed by Terraform/Ansible (unbound view: {{ view_name }})
+{% set ns = namespace(zones=[]) %}
+{% for p in view.ptr_records %}
+{%   set octets = p.ip.split('.') %}
+{%   set zone = octets[2] ~ '.' ~ octets[1] ~ '.' ~ octets[0] ~ '.in-addr.arpa.' %}
+{%   if zone not in ns.zones %}
+{%     set _ = ns.zones.append(zone) %}
+{%   endif %}
+{% endfor %}
+server:
+	verbosity: {{ unbound_verbosity }}
+
+	interface: {{ unbound_listen_ip }}
+	port: {{ view.port }}
+	interface: 127.0.0.1
+
+	do-ip4: yes
+	do-ip6: no
+	do-udp: yes
+	do-tcp: yes
+	do-daemonize: no
+
+	# Only the AdGuard servers may query this view.
+	access-control: 127.0.0.0/8 allow
+{% for c in unbound_allowed_clients %}
+	access-control: {{ c }} allow
+{% endfor %}
+	access-control: 0.0.0.0/0 refuse
+
+	# DNSSEC validation.
+	auto-trust-anchor-file: "/var/lib/unbound/root.key"
+	root-hints: "/usr/share/dns/root.hints"
+
+	hide-identity: yes
+	hide-version: yes
+	prefetch: yes
+	qname-minimisation: {{ unbound_qname_minimisation | ternary('yes', 'no') }}
+	cache-min-ttl: {{ unbound_cache_min_ttl }}
+	cache-max-ttl: {{ unbound_cache_max_ttl }}
+	harden-dnssec-stripped: yes
+
+{% for z in ns.zones %}
+	local-zone: "{{ z }}" static
+{% endfor %}
+{% for rec in view.records %}
+{% if rec.type == "CNAME" %}
+	local-data: "{{ rec.name }}. IN CNAME {{ rec.value }}."
+{% else %}
+	local-data: "{{ rec.name }}. IN {{ rec.type }} {{ rec.value }}"
+{% endif %}
+{% endfor %}
+{% for p in view.ptr_records %}
+	local-data-ptr: "{{ p.ip }} {{ p.name }}"
+{% endfor %}
+
+remote-control:
+	control-enable: no

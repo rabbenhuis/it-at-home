@@ -117,6 +117,13 @@ output "vlans" {
       nameserver = ["192.168.90.40", "192.168.90.42"]
       dns_zone   = "clients.abbenhuis.net"
     }
+    122 = {
+      name       = "Wireless Clients"
+      subnet     = "192.168.122.0/24"
+      gateway    = "192.168.122.1"
+      nameserver = ["192.168.90.40", "192.168.90.42"]
+      dns_zone   = "clients.abbenhuis.net"
+    }
     132 = {
       name       = "Private WLAN"
       subnet     = "192.168.132.0/24"

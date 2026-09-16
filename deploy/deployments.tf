@@ -47,7 +47,7 @@ locals {
       template_vmid = 9000
       vmid          = 202
       cores         = 1
-      memory        = 512
+      memory        = 1024
       disk_size     = 8
       ip            = "192.168.90.41/24"
       on_boot       = true
@@ -82,7 +82,7 @@ locals {
       template_vmid = 9000
       vmid          = 206
       cores         = 1
-      memory        = 512
+      memory        = 1024
       disk_size     = 8
       ip            = "192.168.90.43/24"
       on_boot       = true

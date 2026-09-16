@@ -57,3 +57,55 @@
     host: 127.0.0.1
     port: 53
     timeout: 60
+
+# ---- DNS view instances (separate unbound processes, one per view) ----
+
+- name: Install unbound view systemd unit
+  ansible.builtin.template:
+    src: unbound@.service.j2
+    dest: /etc/systemd/system/unbound@.service
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart unbound
+
+- name: Create unbound views directory
+  ansible.builtin.file:
+    path: /etc/unbound/views
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Render unbound view configurations
+  ansible.builtin.template:
+    src: unbound-view.conf.j2
+    dest: "/etc/unbound/views/{{ item.key }}.conf"
+    mode: "0644"
+    owner: root
+    group: root
+  loop: "{{ unbound_views | dict2items }}"
+  register: unbound_view_render
+  vars:
+    view_name: "{{ item.key }}"
+    view: "{{ item.value }}"
+
+- name: Validate unbound view configurations
+  ansible.builtin.command: unbound-checkconf /etc/unbound/views/{{ item.key }}.conf
+  loop: "{{ unbound_views | dict2items }}"
+  changed_when: false
+
+- name: Enable and start unbound view instances
+  ansible.builtin.systemd:
+    name: "unbound@{{ item.key }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  loop: "{{ unbound_views | dict2items }}"
+
+- name: Restart unbound views whose config changed
+  ansible.builtin.systemd:
+    name: "unbound@{{ item.item.key }}"
+    state: restarted
+  loop: "{{ unbound_view_render.results }}"
+  when: item.changed
