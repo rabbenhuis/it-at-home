@@ -8,14 +8,15 @@
 # log, comment. `source`/`dest` can reference an alias or '+ipsetname'.
 locals {
   # Workstation (WSL on Windows) is on VLAN 120 wired, VLAN 122 Wi-Fi.
-  firewall_mgmt_sources = [
-    module.cluster.vlans[120].subnet,
-    module.cluster.vlans[122].subnet,
-  ]
+  # These VLANs render into the cluster-level ipset 'mgmt-sources'
+  # (proxmox_virtual_environment_firewall_ipset.mgmt_sources) and are
+  # referenced from the base SSH rule and role admin-UI rules.
+  firewall_mgmt_vlans   = [120, 122]
+  firewall_mgmt_sources = [for id in local.firewall_mgmt_vlans : module.cluster.vlans[id]]
 
   firewall_mgmt_base = [
     { type = "in", action = "ACCEPT", proto = "tcp", dport = "22",
-    source = join(",", local.firewall_mgmt_sources), comment = "SSH (mgmt)" },
+    source = "+mgmt-sources", comment = "SSH (mgmt)" },
     { type = "in", action = "ACCEPT", proto = "icmp", comment = "ICMP (mgmt)" },
   ]
 
@@ -38,7 +39,7 @@ locals {
       { type = "in", action = "ACCEPT", proto = "tcp", dport = "53",
       source = "+adguard-dns-sources", comment = "DNS over TCP (AdGuard VLANs)" },
       { type = "in", action = "ACCEPT", proto = "tcp", dport = "3000",
-      source = join(",", local.firewall_mgmt_sources), comment = "Admin UI (mgmt)" },
+      source = "+mgmt-sources", comment = "Admin UI (mgmt)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     unbound = [

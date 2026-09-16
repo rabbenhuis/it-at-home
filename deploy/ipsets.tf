@@ -15,3 +15,20 @@ resource "proxmox_virtual_environment_firewall_ipset" "adguard_dns_sources" {
     }
   }
 }
+
+# Management VLANs (workstation wired/Wi-Fi) - source for the SSH base rule
+# and role admin-UI rules (e.g. AdGuard 3000).
+resource "proxmox_virtual_environment_firewall_ipset" "mgmt_sources" {
+  provider = proxmox.pve1
+
+  name    = "mgmt-sources"
+  comment = "Management VLANs (SSH/admin access to deployed hosts)"
+
+  dynamic "cidr" {
+    for_each = local.firewall_mgmt_sources
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}
