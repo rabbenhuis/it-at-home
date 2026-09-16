@@ -212,7 +212,7 @@ port; AdGuard routes each VLAN to the right view via **per-client upstreams**
 | View | Port | VLANs | Internal records |
 |------|------|-------|------------------|
 | `internal-full` | 5353 | 37, 70, 75, 80, 90, 95, 100, 115 | full set |
-| `internal-limited` | 5354 | 120, 122, 132 | NAS, printer, scanner, HA |
+| `internal-limited` | 5354 | 120, 122, 132 | NAS, printer, scanner, HA + mgmt (pve1, unifi, zigbee2mqtt, mqtt-explorer) |
 | `iot-platform` | 5355 | 150 | full set + IoT |
 | `iot-limited` | 5356 | 152 | none |
 | `gaming-limited` | 5357 | 160 | none |

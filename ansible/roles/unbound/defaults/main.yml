@@ -57,13 +57,18 @@ unbound_ptr_full:
   - { ip: "192.168.90.43", name: "unbound-sec01.infra.abbenhuis.net" }
   - { ip: "192.168.100.50", name: "nas.abbenhuis.net" }
 
-# Limited internal set for the client VLANs (NAS, printer, scanner, HA).
+# Limited internal set for the client VLANs (NAS, printer, scanner, HA) plus
+# the management-plane services the workstation on VLANs 120/122 needs to reach.
 unbound_records_limited:
   - { type: "A", name: "home-assistant.abbenhuis.internal", value: "192.168.100.70" }
   - { type: "A", name: "maximus.abbenhuis.internal", value: "192.168.100.50" }
   - { type: "A", name: "printer.iot.abbenhuis.internal", value: "192.168.152.45" }
   - { type: "A", name: "scanner.iot.abbenhuis.internal", value: "192.168.152.46" }
   - { type: "A", name: "nas.abbenhuis.net", value: "192.168.100.50" }
+  - { type: "A", name: "zigbee2mqtt.abbenhuis.internal", value: "192.168.100.73" }
+  - { type: "A", name: "bm-pve-prd-01.abbenhuis.internal", value: "192.168.70.64" }
+  - { type: "A", name: "mqtt-explorer.abbenhuis.internal", value: "192.168.100.75" }
+  - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
   - { type: "CNAME", name: "nas.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
   - { type: "CNAME", name: "file-server.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
   - { type: "CNAME", name: "maximus.abbenhuis.net", value: "nas.abbenhuis.net" }
