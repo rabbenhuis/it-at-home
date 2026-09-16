@@ -22,8 +22,8 @@ TARGET="${4:-pve1}"
 : "${TF_VAR_pm_api_token_secret:?set TF_VAR_pm_api_token_secret}"
 
 case "$TARGET" in
-  pve1) NODE="bm-pve-prd-01"; API_HOST="bm-pve-prd-01.abbenhuis.internal" ;;
-  pve2) NODE="bm-pve-prd-02"; API_HOST="bm-pve-prd-02.abbenhuis.internal" ;;
+  pve1) NODE="bm-pve-prd-01"; API_HOST="192.168.70.64" ;;
+  pve2) NODE="bm-pve-prd-02"; API_HOST="bm-pve-prd-02.abbenhuis.internal" ;; # set to node IP once pve2 exists
   *) echo "ERROR: unknown target '$TARGET' (expected pve1 or pve2)" >&2; exit 1 ;;
 esac
 

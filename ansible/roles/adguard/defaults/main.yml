@@ -12,7 +12,7 @@ adguard_dns_listen: "0.0.0.0"
 adguard_dns_port: 53
 
 adguard_upstream_dns:
-  # 192.168.90.41 # primary unbound (to be deployed)
+  - 192.168.90.41 # primary unbound
   - 192.168.90.43
 # Upstreams are plain-IP (no hostnames), so no bootstrap/fallback DNS is needed.
 adguard_bootstrap_dns: []
@@ -37,7 +37,8 @@ adguard_filters:
 # IP address (A/AAAA record) or another hostname (CNAME record). E.g.
 #   - {domain: "nas.abbenhuis.internal", answer: "192.168.90.10"}            # A
 #   - {domain: "adguard.abbenhuis.internal", answer: "adguard-sec01.infra.abbenhuis.net"}  # CNAME
-adguard_rewrites: []
+adguard_rewrites:
+  - { domain: "bm-pve-prd-01.abbenhuis.internal", answer: "192.168.70.64" }
 
 # Device registry: each device gets an A record (<hostname>.<zone> -> ip) and
 # its aliases (full domain names) become CNAMEs pointing at that A record. The

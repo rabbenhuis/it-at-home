@@ -2,7 +2,9 @@ output "nodes" {
   description = "Per-node infrastructure settings (endpoint, node name, arch, storage, network)"
   value = {
     pve1 = {
-      endpoint        = "https://bm-pve-prd-01.abbenhuis.internal:8006/"
+      # Endpoint by IP: the .abbenhuis.internal name isn't in any DNS/hosts, so
+      # hostname resolution on the control host is unreliable.
+      endpoint        = "https://192.168.70.64:8006/"
       node_name       = "bm-pve-prd-01"
       architecture    = "amd64"
       disk_datastore  = "local-lvm"
@@ -21,6 +23,8 @@ output "nodes" {
       }
     }
     pve2 = {
+      # Replace with the node IP once the Pi becomes pve2 (same as pve1: no
+      # reliable hostname resolution for .abbenhuis.internal).
       endpoint        = "https://bm-pve-prd-02.abbenhuis.internal:8006/"
       node_name       = "bm-pve-prd-02"
       architecture    = "arm64"

@@ -24,6 +24,38 @@
 #                 (omit = "Managed by Terraform (deployed from template vmid N)")
 locals {
   deployments = {
+    adguard-pri01 = {
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 90
+      template_vmid = 9000
+      vmid          = 201
+      cores         = 2
+      memory        = 512
+      disk_size     = 8
+      ip            = "192.168.90.40/24"
+      on_boot       = true
+      startup       = { order = 10, up_delay = 15, down_delay = 60 }
+      unprivileged  = true
+      role          = "adguard"
+      description   = "Primary AdGuard Home DNS blocker (Managed by Terraform)"
+    }
+    unbound-pri01 = {
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 90
+      template_vmid = 9000
+      vmid          = 202
+      cores         = 1
+      memory        = 512
+      disk_size     = 8
+      ip            = "192.168.90.41/24"
+      on_boot       = true
+      startup       = { order = 10, up_delay = 15, down_delay = 60 }
+      unprivileged  = true
+      role          = "unbound"
+      description   = "Primary recursive resolver (Managed by Terraform)"
+    }
     adguard-sec01 = {
       type          = "lxc"
       target        = "pve1"

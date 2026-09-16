@@ -19,8 +19,18 @@
     dest: "{{ adguard_install_dir }}"
     remote_src: true
     creates: "{{ adguard_install_dir }}/AdGuardHome"
-    extra_opts:
-      - "--strip-components=1"
+
+# The release tarball has a top-level AdGuardHome/ dir; the unarchive module
+# does not reliably apply extra_opts (--strip-components) with remote_src, so
+# flatten it here in case it extracted nested.
+- name: Flatten AdGuard Home directory layout
+  ansible.builtin.shell: |
+    if [ -d "{{ adguard_install_dir }}/AdGuardHome" ] && [ -f "{{ adguard_install_dir }}/AdGuardHome/AdGuardHome" ]; then
+      mv "{{ adguard_install_dir }}/AdGuardHome/AdGuardHome" "{{ adguard_install_dir }}/.AdGuardHome.bin"
+      rm -rf "{{ adguard_install_dir }}/AdGuardHome"
+      mv "{{ adguard_install_dir }}/.AdGuardHome.bin" "{{ adguard_install_dir }}/AdGuardHome"
+    fi
+  changed_when: false
 
 - name: Remove downloaded archive
   ansible.builtin.file:
@@ -68,11 +78,16 @@
     dest: "{{ adguard_install_dir }}/.config-hash"
     mode: "0644"
 
+- name: Check AdGuard Home service unit
+  ansible.builtin.stat:
+    path: /etc/systemd/system/AdGuardHome.service
+  register: adguard_unit_file
+
 - name: Restart AdGuard Home on configuration change
   ansible.builtin.systemd:
     name: AdGuardHome
     state: restarted
-  when: (adguard_prev_hash.content | default("") | b64decode | trim) != adguard_config_hash.stdout.split(" ")[0]
+  when: adguard_unit_file.stat.exists and (adguard_prev_hash.content | default("") | b64decode | trim) != adguard_config_hash.stdout.split(" ")[0]
 
 - name: Install AdGuard Home systemd unit
   ansible.builtin.template:

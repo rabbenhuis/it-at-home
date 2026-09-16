@@ -22,6 +22,10 @@ unbound_cache_max_ttl: 86400
 unbound_local_ptrs:
   - vlan: 90
     records:
+      - ip: "192.168.90.40"
+        name: "adguard-pri01.infra.abbenhuis.net"
+      - ip: "192.168.90.41"
+        name: "unbound-pri01.infra.abbenhuis.net"
       - ip: "192.168.90.42"
         name: "adguard-sec01.infra.abbenhuis.net"
       - ip: "192.168.90.43"
