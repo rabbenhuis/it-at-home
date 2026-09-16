@@ -69,6 +69,7 @@ unbound_records_limited:
   - { type: "A", name: "bm-pve-prd-01.abbenhuis.internal", value: "192.168.70.64" }
   - { type: "A", name: "mqtt-explorer.abbenhuis.internal", value: "192.168.100.75" }
   - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
+  - { type: "A", name: "bm-cp-prd-001.abbenhuis.internal", value: "192.168.100.5" }
   - { type: "CNAME", name: "nas.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
   - { type: "CNAME", name: "file-server.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
   - { type: "CNAME", name: "maximus.abbenhuis.net", value: "nas.abbenhuis.net" }

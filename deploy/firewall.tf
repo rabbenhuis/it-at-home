@@ -32,11 +32,14 @@ locals {
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     unbound = [
-      # Recursive resolver: only the AdGuard servers may query it.
-      { type = "in", action = "ACCEPT", proto = "udp", dport = "53",
-      source = join(",", local.adguard_dns_servers), comment = "DNS (AdGuard)" },
-      { type = "in", action = "ACCEPT", proto = "tcp", dport = "53",
-      source = join(",", local.adguard_dns_servers), comment = "DNS over TCP (AdGuard)" },
+      # Recursive resolver + DNS views: only the AdGuard servers may query it.
+      # Base listener on 53 plus the per-view instances on 5353-5357.
+      { type  = "in", action = "ACCEPT", proto = "udp",
+        dport = "53,5353,5354,5355,5356,5357",
+      source = join(",", local.adguard_dns_servers), comment = "DNS + views (AdGuard)" },
+      { type  = "in", action = "ACCEPT", proto = "tcp",
+        dport = "53,5353,5354,5355,5356,5357",
+      source = join(",", local.adguard_dns_servers), comment = "DNS + views over TCP (AdGuard)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     # haos: add when a Home Assistant host is deployed (e.g. tcp 80/443/8123 from mgmt).
