@@ -141,6 +141,8 @@ resource "proxmox_virtual_environment_vm" "instance" {
     bridge   = var.bridge
     firewall = var.firewall
     vlan_id  = var.vlan_id
+    # VirtIO multiqueue (matches the vm template).
+    queues = 2
   }
 
   initialization {

@@ -13,6 +13,10 @@ resource "proxmox_virtual_environment_vm" "build" {
   vm_id       = var.vmid
   started     = true
 
+  # UEFI (OVMF) boot with the q35 chipset.
+  bios    = "ovmf"
+  machine = "q35"
+
   # Ephemeral build instance: don't auto-start after a node reboot.
   on_boot = false
 
@@ -30,6 +34,16 @@ resource "proxmox_virtual_environment_vm" "build" {
 
   memory {
     dedicated = var.memory
+    # floating = 0 disables the balloon device (default 0 already means off,
+    # but set explicitly to keep it off).
+    floating = 0
+  }
+
+  # EFI disk required by OVMF; type "4m" (ignored on aarch64, uses 2m there).
+  efi_disk {
+    datastore_id      = var.disk_datastore
+    type              = "4m"
+    pre_enrolled_keys = true
   }
 
   disk {
@@ -43,6 +57,8 @@ resource "proxmox_virtual_environment_vm" "build" {
     bridge   = var.bridge
     vlan_id  = var.vlan_id
     firewall = var.firewall
+    # VirtIO multiqueue.
+    queues = 2
   }
 
   initialization {
