@@ -48,6 +48,8 @@ module "deploy_pve1" {
   source    = "../modules/deploy"
   providers = { proxmox = proxmox.pve1 }
 
+  depends_on = [proxmox_virtual_environment_firewall_ipset.adguard_dns_sources]
+
   for_each = local.pve1_hosts
 
   name           = each.key
@@ -83,6 +85,8 @@ module "deploy_pve1" {
 module "deploy_pve2" {
   source    = "../modules/deploy"
   providers = { proxmox = proxmox.pve2 }
+
+  depends_on = [proxmox_virtual_environment_firewall_ipset.adguard_dns_sources]
 
   for_each = local.pve2_hosts
 

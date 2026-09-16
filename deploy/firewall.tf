@@ -22,11 +22,21 @@ locals {
   # AdGuard Home servers: the only clients allowed to query the unbound resolver.
   adguard_dns_servers = ["192.168.90.40", "192.168.90.42"]
 
+  # VLANs that may query the AdGuard DNS servers (all AdGuard-served VLANs;
+  # guest 142 uses the router's DNS). Rendered into a cluster-level ipset
+  # (proxmox_virtual_environment_firewall_ipset.adguard_dns_sources) and used
+  # as the source of the adguard port-53 rules, so DNS is restricted per node
+  # as well as on the MikroTik.
+  adguard_dns_vlans   = [37, 70, 75, 80, 90, 95, 100, 115, 120, 122, 132, 150, 152, 160]
+  adguard_dns_sources = [for id in local.adguard_dns_vlans : module.cluster.vlans[id]]
+
   firewall_rules = {
     adguard = [
-      # Environment-wide DNS server: 53 open to all VLANs.
-      { type = "in", action = "ACCEPT", proto = "udp", dport = "53", comment = "DNS" },
-      { type = "in", action = "ACCEPT", proto = "tcp", dport = "53", comment = "DNS over TCP" },
+      # Environment-wide DNS server: 53 open to the AdGuard-served VLANs only.
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "53",
+      source = "+adguard-dns-sources", comment = "DNS (AdGuard VLANs)" },
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "53",
+      source = "+adguard-dns-sources", comment = "DNS over TCP (AdGuard VLANs)" },
       { type = "in", action = "ACCEPT", proto = "tcp", dport = "3000",
       source = join(",", local.firewall_mgmt_sources), comment = "Admin UI (mgmt)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
