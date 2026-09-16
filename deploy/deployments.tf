@@ -35,7 +35,7 @@ locals {
       disk_size     = 8
       ip            = "192.168.90.40/24"
       on_boot       = true
-      startup       = { order = 10, up_delay = 15, down_delay = 60 }
+      startup       = { order = 20, up_delay = 15, down_delay = 60 }
       unprivileged  = true
       role          = "adguard"
       description   = "Primary AdGuard Home DNS blocker (Managed by Terraform)"
@@ -51,7 +51,7 @@ locals {
       disk_size     = 8
       ip            = "192.168.90.41/24"
       on_boot       = true
-      startup       = { order = 10, up_delay = 15, down_delay = 60 }
+      startup       = { order = 20, up_delay = 15, down_delay = 60 }
       unprivileged  = true
       role          = "unbound"
       description   = "Primary recursive resolver (Managed by Terraform)"
