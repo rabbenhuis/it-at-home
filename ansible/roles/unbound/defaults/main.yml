@@ -70,6 +70,7 @@ unbound_records_limited:
   - { type: "A", name: "mqtt-explorer.abbenhuis.internal", value: "192.168.100.75" }
   - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
   - { type: "A", name: "bm-cp-prd-001.abbenhuis.internal", value: "192.168.100.5" }
+  - { type: "A", name: "dongle-m.abbenhuis.internal", value: "192.168.150.10" }
   - { type: "A", name: "adguard-pri01.infra.abbenhuis.net", value: "192.168.90.40" }
   - { type: "A", name: "adguard-sec01.infra.abbenhuis.net", value: "192.168.90.42" }
   - { type: "A", name: "unbound-pri01.infra.abbenhuis.net", value: "192.168.90.41" }
