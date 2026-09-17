@@ -469,6 +469,23 @@ token in bws without touching the host (e.g. pve1):
 ./scripts/pve-hosts.sh pve1 --check   # dry-run, never applies (review first!)
 ```
 
+Connection modes:
+- **default**: SSH as the `ansible` user (`~/.ssh/id_ed25519`, passwordless sudo).
+  Only possible once the pve role has run (it creates that user).
+- **`--bootstrap`**: SSH as root with `PVE_ROOT_PASSWORD` (sshpass); only for a
+  fresh install where root password auth still works.
+- **`--user sysadm1n`**: first run on an already-configured host that has no
+  `ansible` user yet (e.g. pve1). Uses `~/.ssh/id_rsa`; `sysadm1n`'s sudo needs
+  a password, so either export `PVE_SUDO_PASSWORD` or you'll be prompted
+  (`--ask-become-pass`). This run creates the `ansible` user and hardens the
+  host; afterwards plain runs as `ansible` work:
+
+```bash
+./scripts/pve-hosts.sh pve1 --check --user sysadm1n    # review the diff first
+./scripts/pve-hosts.sh pve1 --user sysadm1n            # converge (creates ansible)
+./scripts/pve-hosts.sh pve1                            # from now on, as ansible
+```
+
 `--check` runs `ansible-playbook --check --diff`: nothing is applied, and on a
 manually-configured host it will show the managed files the role would adopt
 (sshd drop-in, fail2ban, sysctl, …) as changes — expected, not an error.

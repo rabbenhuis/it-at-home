@@ -7,11 +7,17 @@ set -euo pipefail
 #   ./pve-hosts.sh pve1 --check       # dry-run only, never applies anything
 #   ./pve-hosts.sh --bootstrap        # first run after a fresh install (SSH as root)
 #   ./pve-hosts.sh pve1 --bootstrap   # bootstrap only pve1
+#   ./pve-hosts.sh pve1 --user sysadm1n   # first run on an existing host (see below)
 #
-# --bootstrap connects as root using PVE_ROOT_PASSWORD (via sshpass); use it
-# once after a fresh Proxmox install to create the ansible/sysadm1n OS users,
-# set up the PVE users/roles/ACLs and apply hardening. Later runs connect as
-# the ansible user (created by the first run).
+# Connection modes:
+#   - default: SSH as the `ansible` user (~/.ssh/id_ed25519, passwordless sudo).
+#     Only possible once the pve role has run (it creates that user).
+#   - --bootstrap: SSH as root using PVE_ROOT_PASSWORD (via sshpass). Only for a
+#     fresh install where root password auth still works.
+#   - --user sysadm1n: first run on an already-configured host that has no
+#     `ansible` user yet (e.g. pve1). Connects with ~/.ssh/id_rsa; sudo on
+#     sysadm1n needs a password, so either export PVE_SUDO_PASSWORD or you will
+#     be prompted (--ask-become-pass). This run creates the ansible user.
 #
 # --check runs `ansible-playbook --check --diff`: nothing is applied. Task
 # errors abort with a non-zero exit; tasks that merely report changes (expected
@@ -22,18 +28,25 @@ set -euo pipefail
 MODE=normal
 TARGET=""
 CHECK=0
+SSH_USER=ansible
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     pve1|pve2) TARGET="$1"; shift ;;
     --bootstrap) MODE=bootstrap; shift ;;
     --check) CHECK=1; shift ;;
+    --user) SSH_USER="$2"; shift 2 ;;
     *)
       echo "ERROR: unknown argument '$1'" >&2
-      echo "Usage: $0 [pve1|pve2] [--bootstrap] [--check]" >&2
+      echo "Usage: $0 [pve1|pve2] [--bootstrap] [--user NAME] [--check]" >&2
       exit 1 ;;
   esac
 done
+
+if [[ "$MODE" == "bootstrap" && "$SSH_USER" != "ansible" ]]; then
+  echo "ERROR: --bootstrap always connects as root; remove --user" >&2
+  exit 1
+fi
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ANSIBLE_DIR="$ROOT/ansible"
@@ -54,7 +67,6 @@ else
   HOSTS=(pve1 pve2)
 fi
 
-SSH_USER=ansible
 EXTRA_ARGS=()
 if [[ "$MODE" == "bootstrap" ]]; then
   command -v sshpass >/dev/null || { echo "ERROR: sshpass is required for --bootstrap" >&2; exit 1; }
@@ -64,6 +76,24 @@ if [[ "$MODE" == "bootstrap" ]]; then
     -e "ansible_password=${PVE_ROOT_PASSWORD}"
     -e "ansible_ssh_common_args=-o StrictHostKeyChecking=accept-new -o PubkeyAuthentication=no -o PreferredAuthentications=password"
   )
+else
+  # SSH key per user: sysadm1n uses the personal key, ansible the deploy key.
+  case "$SSH_USER" in
+    sysadm1n) SSH_KEY="$HOME/.ssh/id_rsa" ;;
+    *)        SSH_KEY="$HOME/.ssh/id_ed25519" ;;
+  esac
+  EXTRA_ARGS+=(-e "ansible_ssh_private_key_file=$SSH_KEY")
+
+  # Become (sudo) password. The `ansible` user has passwordless sudo (set up by
+  # the role); other users (e.g. sysadm1n on an existing host) need a password:
+  # provide PVE_SUDO_PASSWORD or prompt with --ask-become-pass.
+  if [[ "$SSH_USER" != "ansible" ]]; then
+    if [[ -n "${PVE_SUDO_PASSWORD:-}" ]]; then
+      EXTRA_ARGS+=(-e "ansible_become_password=$PVE_SUDO_PASSWORD")
+    else
+      EXTRA_ARGS+=(--ask-become-pass)
+    fi
+  fi
 fi
 
 # Optional OS password for the sysadm1n account, which enables the PVE web GUI
