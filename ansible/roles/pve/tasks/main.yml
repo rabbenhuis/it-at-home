@@ -43,6 +43,7 @@
       - debsecan
       - debsums
       - rkhunter
+      - auditd
       - libpam-tmpdir
       - libpam-pwquality
       - msmtp
@@ -219,17 +220,44 @@
 
 # --- fail2ban -------------------------------------------------------------
 
-- name: Configure fail2ban sshd jail
+- name: Install proxmox fail2ban filter
   ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../roles/base/files/fail2ban-jail.local"
+    src: proxmox.conf
+    dest: /etc/fail2ban/filter.d/proxmox.conf
+    mode: "0644"
+    owner: root
+    group: root
+  register: pve_f2b_filter
+
+- name: Configure fail2ban jails (sshd + proxmox)
+  ansible.builtin.copy:
+    src: fail2ban-jail.local
     dest: /etc/fail2ban/jail.local
     mode: "0644"
     owner: root
     group: root
+  register: pve_f2b_jail
 
 - name: Enable and start fail2ban
   ansible.builtin.systemd:
     name: fail2ban
+    enabled: true
+    state: started
+  ignore_errors: true
+
+- name: Restart fail2ban when configuration changed
+  ansible.builtin.systemd:
+    name: fail2ban
+    state: restarted
+  when: pve_f2b_filter.changed or pve_f2b_jail.changed
+  ignore_errors: true
+
+# Kernel-level event auditing (login/logout, sudo, auth failures). The base
+# role skips it only because audit can't run in an unprivileged LXC; the PVE
+# host is a full system where it works.
+- name: Enable and start auditd
+  ansible.builtin.systemd:
+    name: auditd
     enabled: true
     state: started
   ignore_errors: true
@@ -271,6 +299,18 @@
   ansible.builtin.apt:
     name: at
     state: absent
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# Unused archive tools: nothing depends on them anymore, and unzip has a
+# history of RCE/overflow CVEs. Smaller install = smaller attack surface.
+- name: Remove unused archive tools (zip, unzip)
+  ansible.builtin.apt:
+    name:
+      - zip
+      - unzip
+    state: absent
+    purge: true
   environment:
     DEBIAN_FRONTEND: noninteractive
 
@@ -332,7 +372,7 @@
   ansible.builtin.lineinfile:
     path: /etc/pam.d/common-password
     regexp: ".*pam_pwquality\\.so.*"
-    line: "password requisite pam_pwquality.so retry=3"
+    line: "password requisite pam_pwquality.so retry=3 minlen=12 minclass=3"
     insertbefore: "^password\\s+\\[success=1 default=ignore\\].*pam_unix\\.so"
 
 # --- file permissions / setuid --------------------------------------------
@@ -374,9 +414,10 @@
     state: link
     force: true
 
-- name: Enable systemd-timesyncd
+# PVE ships chrony for NTP (there is no systemd-timesyncd unit on the host).
+- name: Enable and start chrony
   ansible.builtin.systemd:
-    name: systemd-timesyncd
+    name: chrony
     enabled: true
     state: started
   ignore_errors: true

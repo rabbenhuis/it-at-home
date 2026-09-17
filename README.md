@@ -506,9 +506,11 @@ manually-configured host it will show the managed files the role would adopt
   convergence as in the table above.
 - **Hardening** (PVE-safe subset of the base role): apt full-upgrade,
   unattended-upgrades, sysctl, sshd drop-in (`PermitRootLogin no`, keys only,
-  `AllowUsers ansible sysadm1n`), fail2ban, journald limits, `/etc/cron.allow`,
-  login.defs/umask, core dumps off, pam_pwquality, timezone/timesyncd, lynis +
-  debsums + rkhunter + debsecan with cron email.
+  `AllowUsers ansible sysadm1n`), fail2ban (sshd **+ proxmox** jails for the
+  web UI), **auditd** (kernel auditing works on the full host), journald limits,
+  `/etc/cron.allow`, login.defs/umask, core dumps off,
+  pam_pwquality (`minlen=12 minclass=3`), timezone, **chrony** (PVE's NTP),
+  lynis + debsums + rkhunter + debsecan with cron email, purges `at`/`zip`/`unzip`.
 - **Deliberately NOT done** (would break the hypervisor): machine-id / SSH
   host-key reset, `firstboot.service`, aide, postfix purge, locking root.
 
