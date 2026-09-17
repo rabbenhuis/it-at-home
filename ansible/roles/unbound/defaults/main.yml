@@ -75,10 +75,19 @@ unbound_records_limited:
   - { type: "A", name: "adguard-sec01.infra.abbenhuis.net", value: "192.168.90.42" }
   - { type: "A", name: "unbound-pri01.infra.abbenhuis.net", value: "192.168.90.41" }
   - { type: "A", name: "unbound-sec01.infra.abbenhuis.net", value: "192.168.90.43" }
+
+unbound_cnames_limited:
   - { type: "CNAME", name: "nas.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
   - { type: "CNAME", name: "file-server.abbenhuis.internal", value: "maximus.abbenhuis.internal" }
   - { type: "CNAME", name: "maximus.abbenhuis.net", value: "nas.abbenhuis.net" }
   - { type: "CNAME", name: "file-server.abbenhuis.net", value: "nas.abbenhuis.net" }
+
+unbound_ptr_limited:
+  - { ip: "192.168.90.40", name: "adguard-pri01.infra.abbenhuis.net" }
+  - { ip: "192.168.90.41", name: "unbound-pri01.infra.abbenhuis.net" }
+  - { ip: "192.168.90.42", name: "adguard-sec01.infra.abbenhuis.net" }
+  - { ip: "192.168.90.43", name: "unbound-sec01.infra.abbenhuis.net" }
+  - { ip: "192.168.100.50", name: "nas.abbenhuis.net" }
 
 unbound_views:
   internal-full:
@@ -87,8 +96,8 @@ unbound_views:
     ptr_records: "{{ unbound_ptr_full }}"
   internal-limited:
     port: 5354
-    records: "{{ unbound_records_limited }}"
-    ptr_records: []
+    records: "{{ unbound_records_limited + unbound_cnames_limited }}"
+    ptr_records: "{{ unbound_ptr_limited }}"
   iot-platform:
     port: 5355
     records: "{{ unbound_records_full + unbound_cnames_full }}"
