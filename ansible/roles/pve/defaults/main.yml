@@ -16,7 +16,7 @@ msmtp_logfile: /var/log/msmtp
 # from PVE_SYSADM1N_PASSWORD (env or a bws secret); never commit plaintext here.
 pve_sysadm1n_password_hash: ""
 
-# Privileges granted to the PVE role "TerraForm-Infra" (mirrors the
+# Privileges granted to the PVE role "Terraform-Infra" (mirrors the
 # manually-created TerraformRole on pve1; used by build-template.sh and
 # deploy-hosts.sh to manage VMs, containers, storage and templates).
 pve_terraform_infra_privs:
@@ -43,8 +43,9 @@ pve_terraform_infra_privs:
   - VM.Config.CPU
   - Datastore.Audit
 
-# Older role names superseded by TerraForm-Infra (PVE cannot rename roles, so
+# Older role names superseded by Terraform-Infra (PVE cannot rename roles, so
 # they are deleted once no ACL references them anymore).
 pve_obsolete_roles:
   - TerraformRole
   - Terraform-Deployer
+  - TerraForm-Infra

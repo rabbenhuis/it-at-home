@@ -14,7 +14,7 @@ set -euo pipefail
 #        TF_VAR_pm_api_token_id           = terraform@pve!infra   (shared, created once)
 #        TF_VAR_pm_api_token_secret_pve1/2 = <node secret>
 #   3. Auto-run scripts/pve-hosts.sh --bootstrap. That runs the pve role, which
-#      owns the rest of the access control (TerraForm-Infra role, ACLs, PAM
+#      owns the rest of the access control (Terraform-Infra role, ACLs, PAM
 #      users) plus OS users and hardening.
 #
 # --register-only skips SSH/pveum (e.g. on pve1 which is already configured and

@@ -9,7 +9,7 @@
 #   - root is NOT locked and keeps its key (emergency access)
 #
 # Also manages PVE access control (users/roles/ACLs) via pveum so the
-# TerraForm-Infra role, terraform@pve and the admin users converge on every
+# Terraform-Infra role, terraform@pve and the admin users converge on every
 # run (fresh installs and existing hosts alike). Shared files/templates are
 # reused from the base role via playbook_dir so there is a single source of truth.
 
@@ -72,14 +72,14 @@
 # Idempotent convergence commands (no-op when the desired state already exists).
 # In --check mode these are reported as changed but never executed.
 
-- name: Ensure TerraForm-Infra role has the expected privileges
+- name: Ensure Terraform-Infra role has the expected privileges
   ansible.builtin.shell: |
     set -e
     PRIVS="{{ pve_terraform_infra_privs | join(',') }}"
-    if pveum role list --output-format json | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"TerraForm-Infra"'; then
-      pveum role modify TerraForm-Infra -privs "$PRIVS"
+    if pveum role list --output-format json | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"Terraform-Infra"'; then
+      pveum role modify Terraform-Infra -privs "$PRIVS"
     else
-      pveum role add TerraForm-Infra -privs "$PRIVS"
+      pveum role add Terraform-Infra -privs "$PRIVS"
     fi
   changed_when: false
 
@@ -98,12 +98,12 @@
     pveum user list --output-format json | grep -qE '"userid"[[:space:]]*:[[:space:]]*"ansible@pam"' || pveum user add ansible@pam
   changed_when: false
 
-- name: Grant TerraForm-Infra role to terraform@pve
-  ansible.builtin.command: pveum aclmod / -user terraform@pve -role TerraForm-Infra
+- name: Grant Terraform-Infra role to terraform@pve
+  ansible.builtin.command: pveum aclmod / -user terraform@pve -role Terraform-Infra
   changed_when: false
 
 # Rename cleanup: PVE cannot rename roles, so the roles that preceded
-# TerraForm-Infra (the manual TerraformRole on pve1, and the earlier
+# Terraform-Infra (the manual TerraformRole on pve1, and the earlier
 # Terraform-Deployer name) are deleted here once no ACL references them anymore.
 # If one is still referenced, the stale ACL must be removed first
 # (pveum aclmod <path> -user <user> -role <role> -delete).
