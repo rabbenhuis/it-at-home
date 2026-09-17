@@ -20,6 +20,8 @@
 #   role          service role to apply post-deploy, mapped to an ansible playbook
 #                 in deploy/roles.tf (e.g. "adguard", "unbound", "haos", "harden");
 #                 omit = skip
+#   backup        backup tier from deploy/backup.tf ("tier-0".."tier-3"); hosts in
+#                 the same tier share one backup job. omit = not backed up
 #   description   free-form note shown in the Proxmox container/VM notes field
 #                 (omit = "Managed by Terraform (deployed from template vmid N)")
 locals {
@@ -38,6 +40,7 @@ locals {
       startup       = { order = 20, up_delay = 15, down_delay = 60 }
       unprivileged  = true
       role          = "adguard"
+      backup        = "tier-0"
       description   = "Primary AdGuard Home DNS blocker (Managed by Terraform)"
     }
     unbound-pri01 = {
@@ -54,6 +57,7 @@ locals {
       startup       = { order = 20, up_delay = 15, down_delay = 60 }
       unprivileged  = true
       role          = "unbound"
+      backup        = "tier-0"
       description   = "Primary recursive resolver (Managed by Terraform)"
     }
     adguard-sec01 = {
@@ -73,6 +77,7 @@ locals {
       keyctl        = false
       fuse          = false
       role          = "adguard"
+      backup        = "tier-0"
       description   = "Secondary AdGuard Home DNS blocker (Managed by Terraform)"
     }
     unbound-sec01 = {
@@ -92,6 +97,7 @@ locals {
       keyctl        = false
       fuse          = false
       role          = "unbound"
+      backup        = "tier-0"
       description   = "Secondary recursive resolver (Managed by Terraform)"
     }
     # web1 = {
