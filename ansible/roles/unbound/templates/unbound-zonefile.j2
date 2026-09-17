@@ -1,0 +1,15 @@
+; Managed by Terraform/Ansible (unbound auth-zone {{ zone_name }} for view {{ view_name }})
+{{ zone_name }}.	{{ unbound_auth_zone_ttl }}	IN	SOA	ns.{{ zone_name }}. hostmaster.{{ zone_name }}. (
+		{{ unbound_auth_zone_serial }} ; serial
+		7200        ; refresh
+		3600        ; retry
+		1209600     ; expire
+		{{ unbound_auth_zone_ttl }} )  ; minimum
+{{ zone_name }}.	{{ unbound_auth_zone_ttl }}	IN	NS	ns.{{ zone_name }}.
+{% for rec in view.records %}
+{% if rec.type == "CNAME" %}
+{{ rec.name }}.	{{ unbound_auth_zone_ttl }}	IN	CNAME	{{ rec.value }}.
+{% else %}
+{{ rec.name }}.	{{ unbound_auth_zone_ttl }}	IN	{{ rec.type }}	{{ rec.value }}
+{% endif %}
+{% endfor %}

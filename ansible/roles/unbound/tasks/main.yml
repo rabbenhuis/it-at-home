@@ -90,6 +90,20 @@
     view_name: "{{ item.key }}"
     view: "{{ item.value }}"
 
+- name: Render unbound view auth-zone zonefiles
+  ansible.builtin.template:
+    src: unbound-zonefile.j2
+    dest: "/etc/unbound/views/{{ item.0.key }}.{{ item.1.name }}.zone"
+    mode: "0644"
+    owner: root
+    group: unbound
+  loop: "{{ unbound_views | dict2items | product(unbound_auth_zones) | list }}"
+  register: unbound_view_zone_render
+  vars:
+    view_name: "{{ item.0.key }}"
+    view: "{{ item.0.value }}"
+    zone_name: "{{ item.1.name }}"
+
 - name: Validate unbound view configurations
   ansible.builtin.command: unbound-checkconf /etc/unbound/views/{{ item.key }}.conf
   loop: "{{ unbound_views | dict2items }}"
@@ -108,4 +122,11 @@
     name: "unbound@{{ item.item.key }}"
     state: restarted
   loop: "{{ unbound_view_render.results }}"
+  when: item.changed
+
+- name: Restart unbound views whose auth-zone zonefile changed
+  ansible.builtin.systemd:
+    name: "unbound@{{ item.item.0.key }}"
+    state: restarted
+  loop: "{{ unbound_view_zone_render.results }}"
   when: item.changed

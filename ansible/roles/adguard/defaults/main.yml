@@ -36,7 +36,7 @@ adguard_filters:
 # Static DNS records served by AdGuard (override upstream). `answer` can be an
 # IP address (A/AAAA record) or another hostname (CNAME record). E.g.
 #   - {domain: "nas.abbenhuis.internal", answer: "192.168.90.10"}            # A
-#   - {domain: "adguard.abbenhuis.internal", answer: "adguard-sec01.infra.abbenhuis.net"}  # CNAME
+#   - {domain: "adguard.abbenhuis.internal", answer: "adguard-sec01.infra.abbenhuis.internal"}  # CNAME
 # NOTE: internal records now live in the unbound per-view data (ansible/roles/
 # unbound), NOT here - global rewrites would bypass the per-VLAN DNS views.
 adguard_rewrites: []
@@ -50,7 +50,7 @@ adguard_rewrites: []
 #     ip: "192.168.90.10"
 #     aliases: ["files.abbenhuis.net", "backup.abbenhuis.net"]
 # NOTE: device records have moved into the unbound per-view data (see unbound role).
-adguard_device_zone: "abbenhuis.net"
+adguard_device_zone: "abbenhuis.internal"
 adguard_devices: []
 
 # DNS views: route each VLAN's queries to a specific unbound view instance via

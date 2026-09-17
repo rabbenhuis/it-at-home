@@ -38,16 +38,14 @@ server:
 	cache-min-ttl: {{ unbound_cache_min_ttl }}
 	cache-max-ttl: {{ unbound_cache_max_ttl }}
 	harden-dnssec-stripped: yes
+{% if unbound_auth_zone_insecure %}
+{% for az in unbound_auth_zones %}
+	domain-insecure: "{{ az.name }}"
+{% endfor %}
+{% endif %}
 
 {% for z in ns.zones %}
 	local-zone: "{{ z }}" static
-{% endfor %}
-{% for rec in view.records %}
-{% if rec.type == "CNAME" %}
-	local-data: "{{ rec.name }}. IN CNAME {{ rec.value }}."
-{% else %}
-	local-data: "{{ rec.name }}. IN {{ rec.type }} {{ rec.value }}"
-{% endif %}
 {% endfor %}
 {% for p in view.ptr_records %}
 	local-data-ptr: "{{ p.ip }} {{ p.name }}"
@@ -55,3 +53,13 @@ server:
 
 remote-control:
 	control-enable: no
+
+{# The internal records live in the per-view auth-zone zonefile (see
+   unbound-zonefile.j2), so the CNAMEs get fully resolved answers. #}
+{% for az in unbound_auth_zones %}
+auth-zone:
+	name: "{{ az.name }}"
+	zonefile: "/etc/unbound/views/{{ view_name }}.{{ az.name }}.zone"
+	for-downstream: {{ az.for_downstream | ternary('yes', 'no') }}
+	for-upstream: {{ az.for_upstream | ternary('yes', 'no') }}
+{% endfor %}

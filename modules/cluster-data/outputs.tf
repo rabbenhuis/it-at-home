@@ -59,105 +59,105 @@ output "vlans" {
       subnet     = "192.168.37.0/24"
       gateway    = "192.168.37.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "mgmt.abbenhuis.net"
+      dns_zone   = "mgmt.abbenhuis.internal"
     }
     70 = {
       name       = "Hypervisor Plane"
       subnet     = "192.168.70.0/24"
       gateway    = "192.168.70.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "hyper.abbenhuis.net"
+      dns_zone   = "hyper.abbenhuis.internal"
     }
     75 = {
       name       = "Security Hypervisor Plane"
       subnet     = "192.168.75.0/24"
       gateway    = "192.168.75.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "sec-hyper.abbenhuis.net"
+      dns_zone   = "sec-hyper.abbenhuis.internal"
     }
     80 = {
       name       = "Security Services"
       subnet     = "192.168.80.0/24"
       gateway    = "192.168.80.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "sec.abbenhuis.net"
+      dns_zone   = "sec.abbenhuis.internal"
     }
     90 = {
       name       = "infrastructure"
       subnet     = "192.168.90.0/24"
       gateway    = "192.168.90.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "infra.abbenhuis.net"
+      dns_zone   = "infra.abbenhuis.internal"
     }
     95 = {
       name       = "Operations"
       subnet     = "192.168.95.0/24"
       gateway    = "192.168.95.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "ops.abbenhuis.net"
+      dns_zone   = "ops.abbenhuis.internal"
     }
     100 = {
       name       = "Applications"
       subnet     = "192.168.100.0/24"
       gateway    = "192.168.100.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "apps.abbenhuis.net"
+      dns_zone   = "apps.abbenhuis.internal"
     }
     115 = {
       name       = "Observability"
       subnet     = "192.168.115.0/24"
       gateway    = "192.168.115.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "obs.abbenhuis.net"
+      dns_zone   = "obs.abbenhuis.internal"
     }
     120 = {
       name       = "Wired Clients"
       subnet     = "192.168.120.0/24"
       gateway    = "192.168.120.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "clients.abbenhuis.net"
+      dns_zone   = "clients.abbenhuis.internal"
     }
     122 = {
       name       = "Wireless Clients"
       subnet     = "192.168.122.0/24"
       gateway    = "192.168.122.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "clients.abbenhuis.net"
+      dns_zone   = "clients.abbenhuis.internal"
     }
     132 = {
       name       = "Private WLAN"
       subnet     = "192.168.132.0/24"
       gateway    = "192.168.132.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "clients.abbenhuis.net"
+      dns_zone   = "clients.abbenhuis.internal"
     }
     142 = {
       name       = "Guest WLAN"
       subnet     = "192.168.142.0/24"
       gateway    = "192.168.142.1"
       nameserver = ["192.168.142.1"]
-      dns_zone   = "guest.abbenhuis.net"
+      dns_zone   = "guest.abbenhuis.internal"
     }
     150 = {
       name       = "IoT Platform"
       subnet     = "192.168.150.0/24"
       gateway    = "192.168.150.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "iot-platform.abbenhuis.net"
+      dns_zone   = "iot-platform.abbenhuis.internal"
     }
     152 = {
       name       = "IoT Devices"
       subnet     = "192.168.152.0/24"
       gateway    = "192.168.152.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "iot.abbenhuis.net"
+      dns_zone   = "iot.abbenhuis.internal"
     }
     160 = {
       name       = "Gaming"
       subnet     = "192.168.160.0/24"
       gateway    = "192.168.160.1"
       nameserver = ["192.168.90.40", "192.168.90.42"]
-      dns_zone   = "gaming.abbenhuis.net"
+      dns_zone   = "gaming.abbenhuis.internal"
     }
   }
 }
