@@ -262,6 +262,20 @@
     state: started
   ignore_errors: true
 
+- name: Write auditd hardening rules
+  ansible.builtin.copy:
+    src: auditd-99-hardening.rules
+    dest: /etc/audit/rules.d/99-hardening.rules
+    mode: "0640"
+    owner: root
+    group: root
+  register: pve_auditd_rules
+
+- name: Load auditd rules
+  ansible.builtin.command: augenrules --load
+  when: pve_auditd_rules.changed
+  changed_when: false
+
 # --- journald -------------------------------------------------------------
 
 - name: Create journald config directory
