@@ -507,7 +507,8 @@ manually-configured host it will show the managed files the role would adopt
 - **Hardening** (PVE-safe subset of the base role): apt full-upgrade,
   unattended-upgrades, sysctl, sshd drop-in (`PermitRootLogin no`, keys only,
   `AllowUsers ansible sysadm1n`), fail2ban (sshd **+ proxmox** jails for the
-  web UI), **auditd** (kernel auditing works on the full host), journald limits,
+  web UI), **auditd** (kernel auditing works on the full host, with identity/sshd/
+  cron rules and an hourly email alert on critical events), journald limits,
   `/etc/cron.allow`, login.defs/umask, core dumps off,
   pam_pwquality (`minlen=12 minclass=3`), timezone, **chrony** (PVE's NTP),
   lynis + debsums + rkhunter + debsecan with cron email, purges `at`/`zip`/`unzip`.

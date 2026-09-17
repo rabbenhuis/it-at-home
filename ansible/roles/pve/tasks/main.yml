@@ -276,6 +276,24 @@
   when: pve_auditd_rules.changed
   changed_when: false
 
+# Email alerts for critical auditd events (identity/sshd/cron key changes),
+# via the same msmtp + send-mail pipeline as the other security scans.
+- name: Install audit email alert script
+  ansible.builtin.copy:
+    src: audit-email.sh
+    dest: /usr/local/bin/audit-email
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Schedule audit email alerts
+  ansible.builtin.copy:
+    src: audit-email.cron
+    dest: /etc/cron.d/audit-email
+    mode: "0644"
+    owner: root
+    group: root
+
 # --- journald -------------------------------------------------------------
 
 - name: Create journald config directory
