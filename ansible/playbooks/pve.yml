@@ -1,6 +1,6 @@
 ---
 - name: Harden and provision Proxmox VE host
-  hosts: pve
+  hosts: all
   become: true
   roles:
     - role: pve
