@@ -9,7 +9,7 @@
 #   - root is NOT locked and keeps its key (emergency access)
 #
 # Also manages PVE access control (users/roles/ACLs) via pveum so the
-# Terraform-Deployer role, terraform@pve and the admin users converge on every
+# TerraForm-Infra role, terraform@pve and the admin users converge on every
 # run (fresh installs and existing hosts alike). Shared files/templates are
 # reused from the base role via playbook_dir so there is a single source of truth.
 
@@ -71,14 +71,14 @@
 # Idempotent convergence commands (no-op when the desired state already exists).
 # In --check mode these are reported as changed but never executed.
 
-- name: Ensure Terraform-Deployer role has the expected privileges
+- name: Ensure TerraForm-Infra role has the expected privileges
   ansible.builtin.shell: |
     set -e
-    PRIVS="{{ pve_terraform_deployer_privs | join(',') }}"
-    if pveum role list | grep -q '^Terraform-Deployer'; then
-      pveum role modify Terraform-Deployer -privs "$PRIVS"
+    PRIVS="{{ pve_terraform_infra_privs | join(',') }}"
+    if pveum role list | grep -q '^TerraForm-Infra'; then
+      pveum role modify TerraForm-Infra -privs "$PRIVS"
     else
-      pveum role add Terraform-Deployer -privs "$PRIVS"
+      pveum role add TerraForm-Infra -privs "$PRIVS"
     fi
   changed_when: false
 
@@ -97,8 +97,27 @@
     pveum user list | grep -q '^ansible@pam' || pveum user add ansible@pam
   changed_when: false
 
-- name: Grant Terraform-Deployer role to terraform@pve
-  ansible.builtin.command: pveum aclmod / -user terraform@pve -role Terraform-Deployer
+- name: Grant TerraForm-Infra role to terraform@pve
+  ansible.builtin.command: pveum aclmod / -user terraform@pve -role TerraForm-Infra
+  changed_when: false
+
+# Rename cleanup: PVE cannot rename roles, so the roles that preceded
+# TerraForm-Infra (the manual TerraformRole on pve1, and the earlier
+# Terraform-Deployer name) are deleted here once no ACL references them anymore.
+# If one is still referenced, the stale ACL must be removed first
+# (pveum aclmod <path> -user <user> -role <role> -delete).
+- name: Remove superseded roles when no ACL references them
+  ansible.builtin.shell: |
+    set -e
+    for ROLE in {{ pve_obsolete_roles | join(' ') }}; do
+      if pveum role list | grep -qE "^${ROLE}[[:space:]]"; then
+        if pveum acl list 2>/dev/null | grep -q "$ROLE"; then
+          echo "WARN: ${ROLE} is still referenced by an ACL; remove that ACL first (pveum aclmod <path> -user <user> -role ${ROLE} -delete)" >&2
+        else
+          pveum role delete "$ROLE"
+        fi
+      fi
+    done
   changed_when: false
 
 - name: Grant Administrator role to sysadm1n@pam

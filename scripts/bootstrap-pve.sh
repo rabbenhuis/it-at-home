@@ -7,15 +7,15 @@ set -euo pipefail
 #   ./bootstrap-pve.sh pve1 --register-only  # store an existing token in bws (no SSH)
 #
 # Full bootstrap:
-#   1. SSH as root (PVE_ROOT_PASSWORD) and, via pveum, create:
-#        - role  Terraform-Deployer   (privileges mirrored from ansible/roles/pve/defaults)
-#        - user  terraform@pve
-#        - API token 'infra' (--privsep 0)
-#        - ACL   / = Terraform-Deployer
+#   1. SSH as root and, via pveum, ensure user terraform@pve exists and create
+#      the API token 'infra' (--privsep 0). This is the chicken-egg step the
+#      pve role cannot do: the one-time token secret must be captured here.
 #   2. Store the token id + per-node secret in Bitwarden Secrets Manager (bws):
 #        TF_VAR_pm_api_token_id           = terraform@pve!infra   (shared, created once)
 #        TF_VAR_pm_api_token_secret_pve1/2 = <node secret>
-#   3. Auto-run scripts/pve-hosts.sh --bootstrap (OS users + hardening).
+#   3. Auto-run scripts/pve-hosts.sh --bootstrap. That runs the pve role, which
+#      owns the rest of the access control (TerraForm-Infra role, ACLs, PAM
+#      users) plus OS users and hardening.
 #
 # --register-only skips SSH/pveum (e.g. on pve1 which is already configured and
 # hardened): it just stores the existing token id + secret for the node in bws.
@@ -120,28 +120,19 @@ if [[ -z "$SECRET" ]]; then
   fi
 fi
 
-# --- full bootstrap: create role/user/token/acl over root SSH ------------
+# --- full bootstrap: ensure user + create token over root SSH ---------------
 
 if [[ "$MODE" == "full" ]]; then
   IP="$(node_ip "$NODE")"
-  log "Bootstrapping PVE access control on $NODE ($IP) as root"
+  log "Bootstrapping the PVE API token on $NODE ($IP) as root"
   ssh-keygen -R "$IP" >/dev/null 2>&1 || true
-
-  # Terraform-Deployer privileges: keep in sync with ansible/roles/pve/defaults/main.yml.
-  PRIVS="VM.Config.HWType,VM.Config.Cloudinit,Pool.Audit,VM.Config.CDROM,Sys.Modify,VM.Audit,Datastore.AllocateSpace,SDN.Use,Pool.Allocate,VM.Config.Options,VM.Allocate,VM.PowerMgmt,VM.Clone,Datastore.AllocateTemplate,VM.Config.Disk,VM.Migrate,Sys.Audit,Sys.Console,VM.Config.Network,VM.Config.Memory,VM.Config.CPU,Datastore.Audit"
 
   TOKEN_OUT="$(sshpass -p "$PVE_ROOT_PASSWORD" ssh \
     -o StrictHostKeyChecking=accept-new \
     -o PubkeyAuthentication=no -o PreferredAuthentications=password \
-    "root@$IP" bash -s <<EOF
+    "root@$IP" bash -s <<'EOF'
 set -e
 pveum user list | grep -q '^terraform@pve' || pveum user add terraform@pve
-if pveum role list | grep -q '^Terraform-Deployer'; then
-  pveum role modify Terraform-Deployer -privs "$PRIVS"
-else
-  pveum role add Terraform-Deployer -privs "$PRIVS"
-fi
-pveum aclmod / -user terraform@pve -role Terraform-Deployer
 if pveum user token list terraform@pve | grep -q '^infra'; then
   echo "TOKEN_EXISTS"
 else

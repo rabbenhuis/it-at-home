@@ -425,11 +425,11 @@ on every run:
 
 | PVE user | Realm | Role / path | Purpose |
 |----------|-------|-------------|---------|
-| `terraform@pve` | pve | `Terraform-Deployer` on `/` | Terraform build/deploy (API token `infra`, one per node) |
+| `terraform@pve` | pve | `TerraForm-Infra` on `/` | Terraform build/deploy (API token `infra`, one per node) |
 | `sysadm1n@pam` | pam | `Administrator` on `/` | human maintenance / GUI login (OS user) |
 | `ansible@pam` | pam | `PVEAuditor` on `/` | read-only; Ansible connects over SSH as the OS `ansible` user |
 
-The `Terraform-Deployer` role mirrors the manually-created `TerraformRole` on
+The `TerraForm-Infra` role mirrors the manually-created `TerraformRole` on
 pve1 (22 privileges; see `ansible/roles/pve/defaults/main.yml`). PAM realm
 users authenticate against the OS users the role creates (`ansible`,
 `sysadm1n`), so they exist only after the first run.
@@ -446,11 +446,13 @@ export BWS_PROJECT_ID='<secrets project id>'
 ```
 
 This:
-1. SSHs as root and, via `pveum`, creates the `Terraform-Deployer` role,
-   the `terraform@pve` user, the API token `infra` (`--privsep 0`) and the ACL.
+1. SSHs as root and, via `pveum`, ensures the `terraform@pve` user and creates
+   the API token `infra` (`--privsep 0`) — the chicken-egg step only this
+   script can do.
 2. Stores `TF_VAR_pm_api_token_id` (created once) and
    `TF_VAR_pm_api_token_secret_pve1` in Bitwarden Secrets Manager.
-3. Auto-runs `./scripts/pve-hosts.sh pve1 --bootstrap` (OS users + hardening).
+3. Auto-runs `./scripts/pve-hosts.sh pve1 --bootstrap`, which creates the
+   `TerraForm-Infra` role, the ACLs, the OS users and applies hardening.
 
 Run it once per node (pve2 later, same command). To store an **already-existing**
 token in bws without touching the host (e.g. pve1):
