@@ -1,0 +1,30 @@
+# Managed by Ansible
+
+# PVE host: key-based auth only; the ansible and sysadm1n users manage the host
+# over SSH. Root is reachable via console, and is only used over SSH by the
+# one-time --bootstrap run (with the password set at install time).
+PasswordAuthentication no
+PermitEmptyPasswords no
+KbdInteractiveAuthentication no
+AuthenticationMethods publickey
+
+# Root can only be reached via console / physical access.
+PermitRootLogin no
+
+MaxAuthTries 3
+MaxSessions 2
+LoginGraceTime 30
+AllowTcpForwarding no
+AllowAgentForwarding no
+ClientAliveInterval 300
+ClientAliveCountMax 2
+LogLevel VERBOSE
+TCPKeepAlive no
+PubkeyAuthentication yes
+Ciphers aes128-ctr,aes192-ctr,aes256-ctr
+HostbasedAuthentication no
+IgnoreRhosts yes
+X11Forwarding no
+
+# Restrict SSH access to the admin users only.
+AllowUsers ansible sysadm1n

@@ -1,0 +1,449 @@
+---
+# Harden and provision a Proxmox VE host.
+#
+# Mirrors the guest `base` role where PVE-safe, but deliberately excludes the
+# container/VM-specific steps that would break a hypervisor:
+#   - no machine-id / SSH host-key reset, no firstboot.service
+#   - no aide (no container exclusions / no DB init)
+#   - postfix is NOT purged (PVE uses it for notifications)
+#   - root is NOT locked and keeps its key (emergency access)
+#
+# Also manages PVE access control (users/roles/ACLs) via pveum so the
+# Terraform-Deployer role, terraform@pve and the admin users converge on every
+# run (fresh installs and existing hosts alike). Shared files/templates are
+# reused from the base role via playbook_dir so there is a single source of truth.
+
+- name: Update apt cache and full-upgrade
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: full
+    autoremove: true
+    autoclean: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install hardening packages
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+      - curl
+      - wget
+      - gnupg
+      - sudo
+      - git
+      - jq
+      - less
+      - bash-completion
+      - needrestart
+      - unattended-upgrades
+      - apt-listchanges
+      - fail2ban
+      - lynis
+      - debsecan
+      - debsums
+      - rkhunter
+      - libpam-tmpdir
+      - libpam-pwquality
+      - msmtp
+      - msmtp-mta
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Configure unattended-upgrades (periodic)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/20auto-upgrades"
+    dest: /etc/apt/apt.conf.d/20auto-upgrades
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Configure unattended-upgrades (no reboot, purge unused)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/51unattended-upgrades"
+    dest: /etc/apt/apt.conf.d/51unattended-upgrades
+    mode: "0644"
+    owner: root
+    group: root
+
+# --- PVE access control (pveum) -------------------------------------------
+# Idempotent convergence commands (no-op when the desired state already exists).
+# In --check mode these are reported as changed but never executed.
+
+- name: Ensure Terraform-Deployer role has the expected privileges
+  ansible.builtin.shell: |
+    set -e
+    PRIVS="{{ pve_terraform_deployer_privs | join(',') }}"
+    if pveum role list | grep -q '^Terraform-Deployer'; then
+      pveum role modify Terraform-Deployer -privs "$PRIVS"
+    else
+      pveum role add Terraform-Deployer -privs "$PRIVS"
+    fi
+  changed_when: false
+
+- name: Ensure PVE user terraform@pve exists
+  ansible.builtin.shell: |
+    pveum user list | grep -q '^terraform@pve' || pveum user add terraform@pve
+  changed_when: false
+
+- name: Ensure PVE user sysadm1n@pam exists
+  ansible.builtin.shell: |
+    pveum user list | grep -q '^sysadm1n@pam' || pveum user add sysadm1n@pam
+  changed_when: false
+
+- name: Ensure PVE user ansible@pam exists
+  ansible.builtin.shell: |
+    pveum user list | grep -q '^ansible@pam' || pveum user add ansible@pam
+  changed_when: false
+
+- name: Grant Terraform-Deployer role to terraform@pve
+  ansible.builtin.command: pveum aclmod / -user terraform@pve -role Terraform-Deployer
+  changed_when: false
+
+- name: Grant Administrator role to sysadm1n@pam
+  ansible.builtin.command: pveum aclmod / -user sysadm1n@pam -role Administrator
+  changed_when: false
+
+- name: Grant PVEAuditor role to ansible@pam
+  ansible.builtin.command: pveum aclmod / -user ansible@pam -role PVEAuditor
+  changed_when: false
+
+# --- OS users (mirror the guest model) ------------------------------------
+
+- name: Create ansible deploy user
+  ansible.builtin.user:
+    name: ansible
+    comment: deployment user
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+- name: Create sysadm1n maintenance user
+  ansible.builtin.user:
+    name: sysadm1n
+    comment: maintenance user
+    groups: sudo
+    append: true
+    shell: /bin/bash
+    create_home: true
+    state: present
+
+# PVE pam-realm users authenticate against the OS account, so a password here
+# enables the PVE web GUI login as sysadm1n@pam (SSH stays key-only).
+- name: Set sysadm1n OS password (PVE PAM GUI login)
+  ansible.builtin.user:
+    name: sysadm1n
+    password: "{{ pve_sysadm1n_password_hash }}"
+  when: pve_sysadm1n_password_hash | default('') | length > 0
+
+- name: Allow ansible passwordless sudo
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/sudoers-ansible"
+    dest: /etc/sudoers.d/99-ansible
+    mode: "0440"
+    owner: root
+    group: root
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Allow sysadm1n passwordless sudo
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/sudoers-sysadm1n"
+    dest: /etc/sudoers.d/99-sysadm1n
+    mode: "0440"
+    owner: root
+    group: root
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Authorize id_ed25519 for ansible user
+  ansible.posix.authorized_key:
+    user: ansible
+    key: "{{ lookup('file', playbook_dir + '/../roles/base/files/id_ed25519.pub') }}"
+    state: present
+
+- name: Authorize id_rsa for sysadm1n user
+  ansible.posix.authorized_key:
+    user: sysadm1n
+    key: "{{ lookup('file', playbook_dir + '/../roles/base/files/id_rsa.pub') }}"
+    state: present
+
+# --- sysctl ---------------------------------------------------------------
+
+- name: Apply sysctl hardening
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/base/templates/sysctl-99-hardening.conf.j2"
+    dest: /etc/sysctl.d/99-hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-hardening.conf
+  changed_when: false
+  ignore_errors: true
+
+# --- sshd -----------------------------------------------------------------
+
+- name: Write sshd hardening drop-in
+  ansible.builtin.template:
+    src: sshd-99-hardening.conf.j2
+    dest: /etc/ssh/sshd_config.d/99-hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Validate sshd configuration
+  ansible.builtin.command: sshd -t
+  changed_when: false
+
+# --- fail2ban -------------------------------------------------------------
+
+- name: Configure fail2ban sshd jail
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/fail2ban-jail.local"
+    dest: /etc/fail2ban/jail.local
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Enable and start fail2ban
+  ansible.builtin.systemd:
+    name: fail2ban
+    enabled: true
+    state: started
+  ignore_errors: true
+
+# --- journald -------------------------------------------------------------
+
+- name: Create journald config directory
+  ansible.builtin.file:
+    path: /etc/systemd/journald.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Harden journald
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/journald-hardening.conf"
+    dest: /etc/systemd/journald.conf.d/hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Restart journald
+  ansible.builtin.systemd:
+    name: systemd-journald
+    state: restarted
+
+# --- cron / login hardening -----------------------------------------------
+
+- name: Restrict cron usage to root and admin users
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/cron.allow"
+    dest: /etc/cron.allow
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Remove at daemon if present
+  ansible.builtin.apt:
+    name: at
+    state: absent
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Tighten login.defs
+  ansible.builtin.lineinfile:
+    path: /etc/login.defs
+    regexp: "^{{ item.key }}.*"
+    line: "{{ item.key }} {{ item.value }}"
+  loop:
+    - { key: UMASK, value: "027" }
+    - { key: PASS_MAX_DAYS, value: "90" }
+    - { key: PASS_MIN_DAYS, value: "1" }
+    - { key: SHA_CRYPT_MIN_ROUNDS, value: "5000" }
+    - { key: SHA_CRYPT_MAX_ROUNDS, value: "50000" }
+
+- name: Set restrictive umask for shells
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/99-umask.sh"
+    dest: /etc/profile.d/99-umask.sh
+    mode: "0644"
+    owner: root
+    group: root
+
+# --- core dumps -----------------------------------------------------------
+
+- name: Create systemd coredump config directory
+  ansible.builtin.file:
+    path: /etc/systemd/coredump.conf.d
+    state: directory
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Disable core dumps via systemd
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/coredump-hardening.conf"
+    dest: /etc/systemd/coredump.conf.d/99-hardening.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Disable core dumps via shell profile
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/99-disable-core.sh"
+    dest: /etc/profile.d/99-disable-core.sh
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Disable core dumps via limits
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/limits-disable-core"
+    dest: /etc/security/limits.d/99-disable-core.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Enable pam_pwquality password strength checking
+  ansible.builtin.lineinfile:
+    path: /etc/pam.d/common-password
+    regexp: ".*pam_pwquality\\.so.*"
+    line: "password requisite pam_pwquality.so retry=3"
+    insertbefore: "^password\\s+\\[success=1 default=ignore\\].*pam_unix\\.so"
+
+# --- file permissions / setuid --------------------------------------------
+
+- name: Harden cron and sshd file permissions
+  ansible.builtin.file:
+    path: "{{ item.path }}"
+    mode: "{{ item.mode }}"
+  loop:
+    - { path: /etc/crontab, mode: "0600" }
+    - { path: /etc/ssh/sshd_config, mode: "0600" }
+    - { path: /etc/cron.d, mode: "0700" }
+    - { path: /etc/cron.daily, mode: "0700" }
+    - { path: /etc/cron.hourly, mode: "0700" }
+    - { path: /etc/cron.weekly, mode: "0700" }
+    - { path: /etc/cron.monthly, mode: "0700" }
+
+- name: Remove setuid bits from su, mount, umount, wall
+  ansible.builtin.shell: |
+    for b in /bin/su /bin/mount /bin/umount /usr/bin/wall; do
+      [[ -f "$b" ]] && chmod u-s "$b" 2>/dev/null || true
+    done
+  changed_when: false
+
+# --- time -----------------------------------------------------------------
+
+- name: Set timezone to Europe/Amsterdam
+  ansible.builtin.copy:
+    content: "Europe/Amsterdam\n"
+    dest: /etc/timezone
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Link localtime
+  ansible.builtin.file:
+    src: /usr/share/zoneinfo/Europe/Amsterdam
+    dest: /etc/localtime
+    state: link
+    force: true
+
+- name: Enable systemd-timesyncd
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    enabled: true
+    state: started
+  ignore_errors: true
+
+# --- security scanners + email --------------------------------------------
+
+- name: Configure rkhunter defaults
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/default-rkhunter"
+    dest: /etc/default/rkhunter
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Configure rkhunter mirror mode
+  ansible.builtin.lineinfile:
+    path: /etc/rkhunter.conf
+    regexp: "^MIRROR_MODE="
+    line: "MIRROR_MODE=0"
+
+- name: Forward debsecan package cron mail to fully-qualified address
+  ansible.builtin.lineinfile:
+    path: /etc/cron.d/debsecan
+    regexp: "^MAILTO="
+    line: "MAILTO=notify@abbenhuis.net"
+  ignore_errors: true
+
+- name: Schedule weekly lynis and debsecan scans
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/base/templates/security-tools.cron.j2"
+    dest: /etc/cron.d/security-tools
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Install send-mail helper (From = <hostname>@abbenhuis.net)
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/send-mail.sh"
+    dest: /usr/local/bin/send-mail
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Write msmtp config for lynis report emails
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/base/templates/msmtprc.j2"
+    dest: /etc/msmtprc
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Create msmtp logfile
+  ansible.builtin.file:
+    path: /var/log/msmtp
+    state: touch
+    mode: "0600"
+    owner: root
+    group: root
+
+- name: Forward system cron mail to a fully-qualified address
+  ansible.builtin.lineinfile:
+    path: /etc/crontab
+    regexp: "^MAILTO="
+    line: "MAILTO=notify@abbenhuis.net"
+    insertafter: "^PATH="
+    create: true
+
+# --- apt cleanup ----------------------------------------------------------
+
+- name: Exclude docs and man pages from future packages
+  ansible.builtin.copy:
+    src: "{{ playbook_dir }}/../roles/base/files/99nocache"
+    dest: /etc/apt/apt.conf.d/99nocache
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Clean apt caches and remove obsolete packages
+  ansible.builtin.apt:
+    autoremove: true
+    purge: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Clean apt package cache
+  ansible.builtin.apt:
+    autoclean: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive

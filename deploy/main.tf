@@ -12,7 +12,13 @@ variable "pm_api_token_id" {
   sensitive = true
 }
 
-variable "pm_api_token_secret" {
+# Each node has its own terraform@pve token; only the secret differs per node.
+variable "pm_api_token_secret_pve1" {
+  type      = string
+  sensitive = true
+}
+
+variable "pm_api_token_secret_pve2" {
   type      = string
   sensitive = true
 }
@@ -28,14 +34,14 @@ module "cluster" {
 provider "proxmox" {
   alias     = "pve1"
   endpoint  = module.cluster.nodes.pve1.endpoint
-  api_token = "${var.pm_api_token_id}=${var.pm_api_token_secret}"
+  api_token = "${var.pm_api_token_id}=${var.pm_api_token_secret_pve1}"
   insecure  = true
 }
 
 provider "proxmox" {
   alias     = "pve2"
   endpoint  = module.cluster.nodes.pve2.endpoint
-  api_token = "${var.pm_api_token_id}=${var.pm_api_token_secret}"
+  api_token = "${var.pm_api_token_id}=${var.pm_api_token_secret_pve2}"
   insecure  = true
 }
 
@@ -129,7 +135,7 @@ module "deploy_pve2" {
 }
 
 output "hosts" {
-  description = "All hosts in the deployment map (name -> type, node, vlan, ip, vmid, playbook)"
+  description = "All hosts in the deployment map (name -> type, node, vlan, ip, vmid, playbook, backup tier)"
   value = {
     for name, h in local.deployments : name => {
       type     = h.type
@@ -138,6 +144,7 @@ output "hosts" {
       vmid     = h.vmid
       ip       = h.ip
       playbook = try(local.roles[try(h.role, "")], "")
+      backup   = try(h.backup, "")
     }
   }
 }

@@ -7,12 +7,19 @@ terraform {
   }
 }
 
+# The API token id (terraform@pve!infra) is identical on every node; only the
+# secret differs per node.
 variable "pm_api_token_id" {
   type      = string
   sensitive = true
 }
 
-variable "pm_api_token_secret" {
+variable "pm_api_token_secret_pve1" {
+  type      = string
+  sensitive = true
+}
+
+variable "pm_api_token_secret_pve2" {
   type      = string
   sensitive = true
 }
@@ -60,7 +67,7 @@ locals {
 
 provider "proxmox" {
   endpoint  = local.node.endpoint
-  api_token = "${var.pm_api_token_id}=${var.pm_api_token_secret}"
+  api_token = var.target == "pve1" ? "${var.pm_api_token_id}=${var.pm_api_token_secret_pve1}" : "${var.pm_api_token_id}=${var.pm_api_token_secret_pve2}"
   insecure  = true
 }
 

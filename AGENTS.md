@@ -4,8 +4,9 @@ Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds vers
 
 ## Credentials (blocker)
 
-- Provider token comes from **env vars in the user's terminal**: `TF_VAR_pm_api_token_id` / `TF_VAR_pm_api_token_secret`. Never committed. They are **not** in the agent shell — any `terraform plan/apply`, template conversion, or API curl that needs auth must be run by the user (give exact commands) or with the vars exported.
-- No SSH to the PVE host (`bm-pve-prd-01`); SSH only into build containers.
+- Provider token comes from **env vars in the user's terminal**: shared `TF_VAR_pm_api_token_id` (`terraform@pve!infra`) + per-node `TF_VAR_pm_api_token_secret_pve1` / `TF_VAR_pm_api_token_secret_pve2`. Never committed. They are **not** in the agent shell — any `terraform plan/apply`, template conversion, or API curl that needs auth must be run by the user (give exact commands) or with the vars exported.
+- **bws fallback**: the Terraform scripts (`build-template.sh`, `deploy-hosts.sh`) source `scripts/_load-creds.sh`; if the `TF_VAR_*` vars are unset they fetch them from Bitwarden Secrets Manager (`BWS_ACCESS_TOKEN` + `BWS_PROJECT_ID` exported, secrets keyed exactly `TF_VAR_pm_api_token_id` / `TF_VAR_pm_api_token_secret_pve1` / `_pve2`).
+- SSH to the PVE hosts (`bm-pve-prd-01/02`) **is allowed** as the `ansible` user (provisioning) or `sysadm1n` (maintenance); `root` only during the one-time `--bootstrap` (password auth). SSH into build containers as before.
 - `terraform validate` works without credentials; do that, not `plan`.
 
 ## One-shot build
@@ -30,6 +31,13 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 - Playbooks target `hosts: all`; invoke with inline inventory `-i <IP>,`. SSH user: `native` → `root`, `podman`/`docker` → `ansible` (that user + key are baked into the native template; also `sysadm1n` for human maintenance), `vm` → `debian` (cloud-init user from the cloud image, key injected via `user_account`). Root login is disabled; `AllowUsers ansible sysadm1n`.
 - Syntax check only: `~/.local/bin/ansible-playbook --syntax-check playbooks/harden.yml` (from `ansible/`).
 
+## Proxmox host management (pve1/pve2)
+
+- **`ansible/roles/pve/` + `playbooks/pve.yml`** harden the PVE hosts and manage their access control. It is a dedicated PVE-aware role (reuses base files via `playbook_dir`) — it must **not** reset machine-id/host keys, install `firstboot.service`, purge postfix, or lock root (those would break a hypervisor).
+- **`scripts/pve-hosts.sh [pve1|pve2] [--bootstrap] [--check]`** runs the pve role. Normal SSH user is `ansible`; `--bootstrap` uses `root` + `PVE_ROOT_PASSWORD` (sshpass). `--check` is a dry-run that never applies. If `PVE_SYSADM1N_PASSWORD` is set (env or bws secret), the role sets the OS `sysadm1n` password (enables PVE GUI login as `sysadm1n@pam`; PAM users authenticate against the OS account — `ansible` stays passwordless).
+- **`scripts/bootstrap-pve.sh pve1|pve2 [--register-only]`** bootstraps a fresh install: creates via `pveum` the `Terraform-Deployer` role (22 privileges, mirrored from `roles/pve/defaults/main.yml`), user `terraform@pve`, token `infra` (`--privsep 0`), ACL `/`, stores the token id + per-node secret in bws, then auto-runs `pve-hosts.sh --bootstrap`. `--register-only` stores an already-existing token in bws without SSH (for pve1).
+- **PVE access-control model** (managed by the pve role / bootstrap via `pveum`, **not** Terraform): `terraform@pve` → `Terraform-Deployer` on `/`; `sysadm1n@pam` → `Administrator` on `/`; `ansible@pam` → `PVEAuditor` on `/`. PAM users authenticate against the OS users the role creates. Keep the `pveum` role/user/acl tasks idempotent (add-if-missing; never remove existing ACLs). The manual `TerraformRole` on pve1 is superseded by `Terraform-Deployer`.
+
 ## Hard-won gotchas (do not "fix" these back)
 
 - **Never `systemctl restart ssh`** in a build container — socket-activated sshd makes it fail/hang/deadlock. The role only runs `sshd -t` (regenerating host keys first if missing).
@@ -44,8 +52,9 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 ## Layout
 
 - `modules/lxc-template/` — reusable container resource; `base_template_file` vs `base_clone_id` select create-vs-clone. `modules/vm-template/` — QEMU VM from a cloud image (cloud-init). `modules/deploy/` — one module per node (`deploy_pve1`/`deploy_pve2`) cloning templates into managed hosts (lxc or vm via `type`).
-- `ansible/roles/base/` — shared hardening (packages, sshd drop-in, users, sysctl, cron email jobs). `ansible/roles/{podman,docker}/` — runtime installs. `ansible/roles/vm/` — qemu-guest-agent + acct (VM only).
+- `ansible/roles/base/` — shared hardening (packages, sshd drop-in, users, sysctl, cron email jobs). `ansible/roles/{podman,docker}/` — runtime installs. `ansible/roles/vm/` — qemu-guest-agent + acct (VM only). `ansible/roles/pve/` — PVE host hardening + access control (see above).
 - `ansible/roles/base/files/id_ed25519.pub` = the `ansible` user's key; `id_rsa.pub` = `sysadm1n`/maintenance key.
+- `scripts/_load-creds.sh` — shared bws→`TF_VAR_*` loader; `scripts/pve-hosts.sh`, `scripts/bootstrap-pve.sh` — PVE host provisioning/bootstrap.
 - Secrets/tfstate are gitignored; keep it that way.
 
 ## Email notifications

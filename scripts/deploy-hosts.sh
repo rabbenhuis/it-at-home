@@ -14,7 +14,8 @@ set -euo pipefail
 #
 # Scoped deploys use `-target` so hosts outside the scope are left untouched.
 #
-# Prereqs (env): TF_VAR_pm_api_token_id, TF_VAR_pm_api_token_secret
+# Prereqs (env): TF_VAR_pm_api_token_id + per-node TF_VAR_pm_api_token_secret_pve1/2
+# (or BWS_ACCESS_TOKEN + BWS_PROJECT_ID; see scripts/_load-creds.sh)
 
 MODE=apply
 TARGET=""
@@ -33,12 +34,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-: "${TF_VAR_pm_api_token_id:?set TF_VAR_pm_api_token_id}"
-: "${TF_VAR_pm_api_token_secret:?set TF_VAR_pm_api_token_secret}"
-
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_DIR="$ROOT/deploy"
 HELPER="$ROOT/scripts/_deploy-helpers.py"
+
+# Credentials: exported TF_VAR_* or fetched for both nodes from Bitwarden
+# Secrets Manager (bws). The deploy config spans both nodes, so all are needed.
+source "$ROOT/scripts/_load-creds.sh"
+load_pm_creds --all
+: "${TF_VAR_pm_api_token_id:?}"
+: "${TF_VAR_pm_api_token_secret_pve1:?}"
+: "${TF_VAR_pm_api_token_secret_pve2:?}"
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 

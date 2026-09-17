@@ -1,0 +1,44 @@
+---
+# Mail relay used by the security-scan cron emails (same as the base role).
+msmtp_host: mta.abbenhuis.internal
+msmtp_port: 25
+msmtp_from: notify@abbenhuis.net
+msmtp_user: ""
+msmtp_password: ""
+msmtp_auth: "off"
+msmtp_tls: "off"
+msmtp_logfile: /var/log/msmtp
+
+# OS password (SHA-512 crypt hash) for the sysadm1n account. PVE users in the
+# pam realm authenticate against the OS user, so without a password the PVE web
+# GUI login as sysadm1n@pam cannot work (SSH is key-only anyway). Empty =
+# leave the account as-is (locked). The hash is passed by scripts/pve-hosts.sh
+# from PVE_SYSADM1N_PASSWORD (env or a bws secret); never commit plaintext here.
+pve_sysadm1n_password_hash: ""
+
+# Privileges granted to the PVE role "Terraform-Deployer" (mirrors the
+# manually-created TerraformRole on pve1; used by build-template.sh and
+# deploy-hosts.sh to manage VMs, containers, storage and templates).
+pve_terraform_deployer_privs:
+  - VM.Config.HWType
+  - VM.Config.Cloudinit
+  - Pool.Audit
+  - VM.Config.CDROM
+  - Sys.Modify
+  - VM.Audit
+  - Datastore.AllocateSpace
+  - SDN.Use
+  - Pool.Allocate
+  - VM.Config.Options
+  - VM.Allocate
+  - VM.PowerMgmt
+  - VM.Clone
+  - Datastore.AllocateTemplate
+  - VM.Config.Disk
+  - VM.Migrate
+  - Sys.Audit
+  - Sys.Console
+  - VM.Config.Network
+  - VM.Config.Memory
+  - VM.Config.CPU
+  - Datastore.Audit

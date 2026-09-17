@@ -20,24 +20,41 @@ immutable artifacts while newer ones are built.
 
 - Terraform >= 1.5
 - Ansible (installed via pipx): `pipx install ansible`
+- `bws` CLI (Bitwarden Secrets Manager) — optional; only if you don't export
+  the token vars yourself
+- `sshpass` — only for bootstrapping a fresh PVE host (`--bootstrap`)
 - A Proxmox API token with privilege separation **disabled** so it inherits the
   user's rights
 - SSH key pair on the control host: `~/.ssh/id_ed25519[.pub]`
 
 ## Credentials
 
-The provider is configured with two variables (never committed):
+The provider is configured with a shared token id plus a per-node secret (each
+node has its own `terraform@pve` token):
 
 ```hcl
-variable "pm_api_token_id" { type = string; sensitive = true }
-variable "pm_api_token_secret" { type = string; sensitive = true }
+variable "pm_api_token_id"          { type = string; sensitive = true }
+variable "pm_api_token_secret_pve1" { type = string; sensitive = true }
+variable "pm_api_token_secret_pve2" { type = string; sensitive = true }
 ```
 
 Export them in your shell before running anything:
 
 ```bash
 export TF_VAR_pm_api_token_id='terraform@pve!infra'
-export TF_VAR_pm_api_token_secret='<secret>'
+export TF_VAR_pm_api_token_secret_pve1='<pve1 secret>'
+export TF_VAR_pm_api_token_secret_pve2='<pve2 secret>'
+```
+
+Alternatively, store them in Bitwarden Secrets Manager under these exact keys
+and export `BWS_ACCESS_TOKEN` + `BWS_PROJECT_ID`; `build-template.sh` and
+`deploy-hosts.sh` fetch them automatically when the `TF_VAR_*` vars are unset
+(via `scripts/_load-creds.sh`).
+
+```text
+TF_VAR_pm_api_token_id            = terraform@pve!infra
+TF_VAR_pm_api_token_secret_pve1   = <pve1 secret>
+TF_VAR_pm_api_token_secret_pve2   = <pve2 secret>
 ```
 
 ## Repo layout
@@ -61,6 +78,7 @@ ansible/
     podman.yml                 # base + podman
     docker.yml                 # base + docker
     vm.yml                     # base + vm
+    pve.yml                    # PVE host hardening + access control
     adguard.yml                # deploy AdGuard Home (post-deploy)
     unbound.yml                # deploy unbound resolver (post-deploy)
   roles/
@@ -68,10 +86,14 @@ ansible/
     podman/
     docker/
     vm/                        # qemu-guest-agent + acct (VM only)
+    pve/                       # PVE host hardening + pveum access control
     adguard/                   # AdGuard Home install + config (deployed hosts)
     unbound/                   # unbound recursive resolver (deployed hosts)
 scripts/build-template.sh      # full pipeline: apply -> provision -> convert
 scripts/deploy-hosts.sh        # deploy hosts from deployments.tf
+scripts/_load-creds.sh         # bws -> TF_VAR_* credential loader
+scripts/pve-hosts.sh           # harden/provision the PVE hosts
+scripts/bootstrap-pve.sh       # bootstrap a fresh PVE host (pveum + bws)
 scripts/_deploy-helpers.py     # JSON helpers used by deploy-hosts.sh
 ```
 
@@ -351,6 +373,7 @@ Point podman/docker at the new native template and give every build a fresh VMID
 | `podman.yml` | base, podman | ansible |
 | `docker.yml` | base, docker | ansible |
 | `vm.yml` | base, vm | debian (cloud-init) |
+| `pve.yml` | pve | ansible (PVE hosts) |
 
 All playbooks target `all` hosts; the build script passes the instance IP
 inline:
@@ -389,7 +412,88 @@ cd ansible
 - cleanup: apt autoremove/purge/clean, drop `/var/lib/apt/lists`, exclude docs/man
   from future packages, reset machine-id + host keys, clear history/tmp
 
-## Access model
+## Proxmox host management (pve1/pve2)
+
+The Proxmox hosts themselves are managed from this repo: the `pve` role hardens
+them and manages PVE access control (`pveum`), and a bootstrap script stands up
+a fresh install.
+
+### Access model (PVE users/roles/ACLs)
+
+Managed by the `pve` role / bootstrap via `pveum` (not Terraform), converging
+on every run:
+
+| PVE user | Realm | Role / path | Purpose |
+|----------|-------|-------------|---------|
+| `terraform@pve` | pve | `Terraform-Deployer` on `/` | Terraform build/deploy (API token `infra`, one per node) |
+| `sysadm1n@pam` | pam | `Administrator` on `/` | human maintenance / GUI login (OS user) |
+| `ansible@pam` | pam | `PVEAuditor` on `/` | read-only; Ansible connects over SSH as the OS `ansible` user |
+
+The `Terraform-Deployer` role mirrors the manually-created `TerraformRole` on
+pve1 (22 privileges; see `ansible/roles/pve/defaults/main.yml`). PAM realm
+users authenticate against the OS users the role creates (`ansible`,
+`sysadm1n`), so they exist only after the first run.
+
+### Bootstrapping a fresh install
+
+A fresh PVE install has only `root@pam`. One command stands it up:
+
+```bash
+export PVE_ROOT_PASSWORD='<root password from the installer>'
+export BWS_ACCESS_TOKEN='<machine access token>'
+export BWS_PROJECT_ID='<secrets project id>'
+./scripts/bootstrap-pve.sh pve1
+```
+
+This:
+1. SSHs as root and, via `pveum`, creates the `Terraform-Deployer` role,
+   the `terraform@pve` user, the API token `infra` (`--privsep 0`) and the ACL.
+2. Stores `TF_VAR_pm_api_token_id` (created once) and
+   `TF_VAR_pm_api_token_secret_pve1` in Bitwarden Secrets Manager.
+3. Auto-runs `./scripts/pve-hosts.sh pve1 --bootstrap` (OS users + hardening).
+
+Run it once per node (pve2 later, same command). To store an **already-existing**
+token in bws without touching the host (e.g. pve1):
+
+```bash
+./scripts/bootstrap-pve.sh pve1 --register-only   # prompts for the token secret
+```
+
+### Ongoing hardening
+
+```bash
+./scripts/pve-hosts.sh            # all PVE hosts, SSH as ansible
+./scripts/pve-hosts.sh pve1       # only pve1
+./scripts/pve-hosts.sh pve1 --check   # dry-run, never applies (review first!)
+```
+
+`--check` runs `ansible-playbook --check --diff`: nothing is applied, and on a
+manually-configured host it will show the managed files the role would adopt
+(sshd drop-in, fail2ban, sysctl, …) as changes — expected, not an error.
+
+### pve role summary
+
+- **OS users**: `ansible` (id_ed25519) and `sysadm1n` (id_rsa) with passwordless
+  sudo — these back the `@pam` PVE accounts. PVE `pam` realm users authenticate
+  against the OS accounts, so to log into the PVE web GUI as `sysadm1n@pam`
+  the OS `sysadm1n` user needs a password: export `PVE_SYSADM1N_PASSWORD` (or
+  store it in bws under that key) before running `pve-hosts.sh` and the role
+  sets it (deterministic hash, never committed). `ansible` intentionally stays
+  passwordless (SSH-key automation only).
+
+- **OS users**: `ansible` (id_ed25519) and `sysadm1n` (id_rsa) with passwordless
+  sudo — these back the `@pam` PVE accounts.
+- **PVE access control** via `pveum` (idempotent, additive): role/user/ACL
+  convergence as in the table above.
+- **Hardening** (PVE-safe subset of the base role): apt full-upgrade,
+  unattended-upgrades, sysctl, sshd drop-in (`PermitRootLogin no`, keys only,
+  `AllowUsers ansible sysadm1n`), fail2ban, journald limits, `/etc/cron.allow`,
+  login.defs/umask, core dumps off, pam_pwquality, timezone/timesyncd, lynis +
+  debsums + rkhunter + debsecan with cron email.
+- **Deliberately NOT done** (would break the hypervisor): machine-id / SSH
+  host-key reset, `firstboot.service`, aide, postfix purge, locking root.
+
+## Access model (guests)
 
 | User | Key | Purpose |
 |------|-----|---------|
@@ -397,10 +501,14 @@ cd ansible
 | `ansible` | `id_ed25519` | automated deployments (Ansible) |
 | `sysadm1n` | your personal public key | maintenance from other devices |
 
+(The Proxmox host access model — PVE realm users/roles/ACLs — is described
+[above](#access-model-pve-usersrolesacls).)
+
 ## Manual template conversion (without the script)
 
 ```bash
-export AUTH="PVEAPIToken=${TF_VAR_pm_api_token_id}=${TF_VAR_pm_api_token_secret}"
+export SECRET="${TF_VAR_pm_api_token_secret_pve1}"
+export AUTH="PVEAPIToken=${TF_VAR_pm_api_token_id}=${SECRET}"
 API="https://bm-pve-prd-01.abbenhuis.internal:8006/api2/json"
 curl -ksS -X POST -H "Authorization: $AUTH" "$API/nodes/bm-pve-prd-01/lxc/9000/status/stop"
 curl -ksS -X POST -H "Authorization: $AUTH" "$API/nodes/bm-pve-prd-01/lxc/9000/template"
