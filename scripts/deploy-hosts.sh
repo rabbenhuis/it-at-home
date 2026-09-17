@@ -16,6 +16,10 @@ set -euo pipefail
 #
 # Prereqs (env): TF_VAR_pm_api_token_id + per-node TF_VAR_pm_api_token_secret_pve1/2
 # (or BWS_ACCESS_TOKEN + BWS_PROJECT_ID; see scripts/_load-creds.sh)
+#
+# TEMP pve2: pve2 is not installed yet, so deploy/main.tf has the pve2
+# variable/provider/module commented out and this script only loads pve1 creds.
+# When pve2 comes online, uncomment those blocks and restore the --all load.
 
 MODE=apply
 TARGET=""
@@ -38,13 +42,15 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEPLOY_DIR="$ROOT/deploy"
 HELPER="$ROOT/scripts/_deploy-helpers.py"
 
-# Credentials: exported TF_VAR_* or fetched for both nodes from Bitwarden
-# Secrets Manager (bws). The deploy config spans both nodes, so all are needed.
+# Credentials: exported TF_VAR_* or fetched from Bitwarden Secrets Manager
+# (bws). TEMP pve2: only pve1 creds are loaded because pve2 is not installed
+# yet (see deploy/main.tf). When pve2 comes online, restore:
+#   load_pm_creds --all
+#   : "${TF_VAR_pm_api_token_secret_pve2:?}"
 source "$ROOT/scripts/_load-creds.sh"
-load_pm_creds --all
+load_pm_creds pve1
 : "${TF_VAR_pm_api_token_id:?}"
 : "${TF_VAR_pm_api_token_secret_pve1:?}"
-: "${TF_VAR_pm_api_token_secret_pve2:?}"
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 
