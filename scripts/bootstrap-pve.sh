@@ -132,8 +132,8 @@ if [[ "$MODE" == "full" ]]; then
     -o PubkeyAuthentication=no -o PreferredAuthentications=password \
     "root@$IP" bash -s <<'EOF'
 set -e
-pveum user list | grep -q '^terraform@pve' || pveum user add terraform@pve
-if pveum user token list terraform@pve | grep -q '^infra'; then
+pveum user list --output-format json | grep -qE '"userid"[[:space:]]*:[[:space:]]*"terraform@pve"' || pveum user add terraform@pve
+if pveum user token list terraform@pve --output-format json | grep -qE '"tokenid"[[:space:]]*:[[:space:]]*"infra"'; then
   echo "TOKEN_EXISTS"
 else
   pveum user token add terraform@pve infra --privsep 0 --output-format json

@@ -76,7 +76,7 @@
   ansible.builtin.shell: |
     set -e
     PRIVS="{{ pve_terraform_infra_privs | join(',') }}"
-    if pveum role list | grep -q '^TerraForm-Infra'; then
+    if pveum role list --output-format json | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"TerraForm-Infra"'; then
       pveum role modify TerraForm-Infra -privs "$PRIVS"
     else
       pveum role add TerraForm-Infra -privs "$PRIVS"
@@ -85,17 +85,17 @@
 
 - name: Ensure PVE user terraform@pve exists
   ansible.builtin.shell: |
-    pveum user list | grep -q '^terraform@pve' || pveum user add terraform@pve
+    pveum user list --output-format json | grep -qE '"userid"[[:space:]]*:[[:space:]]*"terraform@pve"' || pveum user add terraform@pve
   changed_when: false
 
 - name: Ensure PVE user sysadm1n@pam exists
   ansible.builtin.shell: |
-    pveum user list | grep -q '^sysadm1n@pam' || pveum user add sysadm1n@pam
+    pveum user list --output-format json | grep -qE '"userid"[[:space:]]*:[[:space:]]*"sysadm1n@pam"' || pveum user add sysadm1n@pam
   changed_when: false
 
 - name: Ensure PVE user ansible@pam exists
   ansible.builtin.shell: |
-    pveum user list | grep -q '^ansible@pam' || pveum user add ansible@pam
+    pveum user list --output-format json | grep -qE '"userid"[[:space:]]*:[[:space:]]*"ansible@pam"' || pveum user add ansible@pam
   changed_when: false
 
 - name: Grant TerraForm-Infra role to terraform@pve
@@ -111,8 +111,8 @@
   ansible.builtin.shell: |
     set -e
     for ROLE in {{ pve_obsolete_roles | join(' ') }}; do
-      if pveum role list | grep -qE "^${ROLE}[[:space:]]"; then
-        if pveum acl list 2>/dev/null | grep -q "$ROLE"; then
+      if pveum role list --output-format json | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"'"$ROLE"'"'; then
+        if pveum acl list --output-format json 2>/dev/null | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"'"$ROLE"'"'; then
           echo "WARN: ${ROLE} is still referenced by an ACL; remove that ACL first (pveum aclmod <path> -user <user> -role ${ROLE} -delete)" >&2
         else
           pveum role delete "$ROLE"
