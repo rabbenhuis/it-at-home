@@ -106,14 +106,14 @@
 # Terraform-Infra (the manual TerraformRole on pve1, and the earlier
 # Terraform-Deployer name) are deleted here once no ACL references them anymore.
 # If one is still referenced, the stale ACL must be removed first
-# (pveum aclmod <path> -user <user> -role <role> -delete).
+# (pveum acl delete <path> --roles <role> --users <user>).
 - name: Remove superseded roles when no ACL references them
   ansible.builtin.shell: |
     set -e
     for ROLE in {{ pve_obsolete_roles | join(' ') }}; do
       if pveum role list --output-format json | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"'"$ROLE"'"'; then
         if pveum acl list --output-format json 2>/dev/null | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"'"$ROLE"'"'; then
-          echo "WARN: ${ROLE} is still referenced by an ACL; remove that ACL first (pveum aclmod <path> -user <user> -role ${ROLE} -delete)" >&2
+          echo "WARN: ${ROLE} is still referenced by an ACL; remove that ACL first (pveum acl delete <path> --roles ${ROLE} --users <user>)" >&2
         else
           pveum role delete "$ROLE"
         fi
