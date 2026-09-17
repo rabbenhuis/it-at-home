@@ -262,22 +262,14 @@
     state: started
   ignore_errors: true
 
-- name: Write auditd hardening rules
-  ansible.builtin.copy:
-    src: auditd-99-hardening.rules
-    dest: /etc/audit/rules.d/99-hardening.rules
-    mode: "0640"
-    owner: root
-    group: root
-  register: pve_auditd_rules
+# Auditd rules are NOT managed by this role: the host carries its own
+# comprehensive /etc/audit/rules.d/hardening.rules (identity, sshd, cron,
+# syscall rules, ...). Managing a rules file here would either duplicate those
+# rules or fight augenrules' reload of an already-loaded kernel.
 
-- name: Load auditd rules
-  ansible.builtin.command: augenrules --load
-  when: pve_auditd_rules.changed
-  changed_when: false
-
-# Email alerts for critical auditd events (identity/sshd/cron key changes),
-# via the same msmtp + send-mail pipeline as the other security scans.
+# Email alerts for critical auditd events (identity/sshd/root_ssh/cron/systemd/
+# pam/audit_config key changes), via the same msmtp + send-mail pipeline as the
+# other security scans. Keys must match the host's hardening.rules.
 - name: Install audit email alert script
   ansible.builtin.copy:
     src: audit-email.sh

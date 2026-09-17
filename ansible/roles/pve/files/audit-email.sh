@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Email critical auditd events (identity / sshd_config / cron key changes) since
-# the last run. Silent when nothing new (empty output = no mail), matching the
-# other security-scan cron jobs.
+# Email critical auditd events since the last run. Keys must match the keys
+# emitted by the host's /etc/audit/rules.d/hardening.rules. Silent when nothing
+# new (empty output = no mail), matching the other security-scan cron jobs.
 set -u
 
 STAMP_DIR=/var/lib/audit-email
@@ -19,7 +19,7 @@ else
 fi
 
 OUT=""
-for key in identity sshd_config cron; do
+for key in identity sshd root_ssh cron systemd pam audit_config; do
   OUT+="$(ausearch --start "$SINCE" --key "$key" --format text 2>/dev/null)"
 done
 
