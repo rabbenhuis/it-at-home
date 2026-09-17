@@ -21,7 +21,7 @@ bws_value() {
   local key="$1"
   : "${BWS_ACCESS_TOKEN:?BWS_ACCESS_TOKEN not set (or export TF_VAR_pm_api_token_* directly)}"
   : "${BWS_PROJECT_ID:?BWS_PROJECT_ID not set (or export TF_VAR_pm_api_token_* directly)}"
-  bws secret list --project-id "$BWS_PROJECT_ID" 2>/dev/null | python3 -c '
+  bws secret list "$BWS_PROJECT_ID" 2>/dev/null | python3 -c '
 import json, sys
 key = sys.argv[1]
 try:

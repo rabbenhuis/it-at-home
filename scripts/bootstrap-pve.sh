@@ -57,7 +57,7 @@ node_ip() {
 
 bws_secret_id() {
   local key="$1"
-  bws secret list --project-id "$BWS_PROJECT_ID" 2>/dev/null | python3 -c '
+  bws secret list "$BWS_PROJECT_ID" 2>/dev/null | python3 -c '
 import json, sys
 key = sys.argv[1]
 try:
@@ -71,7 +71,7 @@ except Exception:
 
 bws_value() {
   local key="$1"
-  bws secret list --project-id "$BWS_PROJECT_ID" 2>/dev/null | python3 -c '
+  bws secret list "$BWS_PROJECT_ID" 2>/dev/null | python3 -c '
 import json, sys
 key = sys.argv[1]
 try:
@@ -92,7 +92,7 @@ bws_set_secret() {
     bws secret edit "$id" --value "$value" >/dev/null
   else
     log "Creating bws secret $key"
-    bws secret create --key "$key" --value "$value" --project-id "$BWS_PROJECT_ID" >/dev/null
+    bws secret create "$key" "$value" "$BWS_PROJECT_ID" >/dev/null
   fi
 }
 
