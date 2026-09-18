@@ -68,6 +68,53 @@
     owner: root
     group: root
 
+# --- self-healing: undo base-role mistakes on a hypervisor ----------------
+# The guest base role must never be run on a PVE host, but if it is, these
+# tasks converge the host back to the PVE-safe state (it deletes machine-id /
+# SSH host keys, installs+enables firstboot.service, locks root, installs aide).
+
+- name: Unlock root account (base role locks it; PVE keeps it for emergency access)
+  ansible.builtin.command: passwd -u root
+  changed_when: false
+  failed_when: false
+
+- name: Ensure SSH host keys exist (base role deletes them)
+  ansible.builtin.shell: |
+    ls /etc/ssh/ssh_host_* >/dev/null 2>&1 || ssh-keygen -A
+  changed_when: false
+
+- name: Ensure machine-id exists (base role deletes it)
+  ansible.builtin.shell: |
+    [[ -s /etc/machine-id ]] || systemd-machine-id-setup
+  changed_when: false
+
+- name: Disable container first-boot service (not for hypervisors)
+  ansible.builtin.systemd:
+    name: firstboot.service
+    enabled: false
+  ignore_errors: true
+
+- name: Remove firstboot unit and script (not for hypervisors)
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: absent
+  loop:
+    - /etc/systemd/system/firstboot.service
+    - /usr/local/bin/firstboot.sh
+
+- name: Reload systemd after firstboot removal
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+# PVE uses auditd for kernel auditing; aide is only for the guest templates.
+- name: Remove aide (base role installs it; PVE uses auditd instead)
+  ansible.builtin.apt:
+    name: aide
+    state: absent
+    purge: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
 # --- PVE access control (pveum) -------------------------------------------
 # Idempotent convergence commands (no-op when the desired state already exists).
 # In --check mode these are reported as changed but never executed.
