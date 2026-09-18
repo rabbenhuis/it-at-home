@@ -19,9 +19,13 @@ variable "pm_api_token_secret_pve1" {
   sensitive = true
 }
 
+# TEMP pve2: not installed yet — the build script only sets the selected node's
+# secret, so this stays empty for pve1 builds (never prompted). Once pve2 is up,
+# the provider uses it when target=pve2.
 variable "pm_api_token_secret_pve2" {
   type      = string
   sensitive = true
+  default   = ""
 }
 
 # Selected per build by scripts/build-template.sh

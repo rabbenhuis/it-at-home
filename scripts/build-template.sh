@@ -26,8 +26,8 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 source "$ROOT/scripts/_load-creds.sh"
 load_pm_creds "$TARGET"
 : "${TF_VAR_pm_api_token_id:?}"
-: "${TF_VAR_pm_api_token_secret_pve1:?}"
-: "${TF_VAR_pm_api_token_secret_pve2:?}"
+SECRET_VAR="TF_VAR_pm_api_token_secret_${TARGET}"
+: "${!SECRET_VAR:?${SECRET_VAR} not set (export it or use bws)}"
 
 case "$TARGET" in
   pve1) NODE="bm-pve-prd-01"; API_HOST="192.168.70.64" ;;
@@ -36,7 +36,6 @@ case "$TARGET" in
 esac
 
 API_URL="https://${API_HOST}:8006/api2/json"
-SECRET_VAR="TF_VAR_pm_api_token_secret_${TARGET}"
 AUTH="PVEAPIToken=${TF_VAR_pm_api_token_id}=${!SECRET_VAR}"
 
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
