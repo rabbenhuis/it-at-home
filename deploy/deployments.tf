@@ -106,7 +106,7 @@ locals {
       vlan_id       = 37
       template_vmid = 9200
       vmid          = 100
-      cores         = 4
+      cores         = 2
       memory        = 3072
       ip            = "192.168.37.40/24"
       on_boot       = true

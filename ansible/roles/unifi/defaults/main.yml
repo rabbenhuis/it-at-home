@@ -32,7 +32,8 @@ unifi_swapfile_size: "2G"
 # Deploy-time sizing (deploy/deployments.tf): UOS runs ~15 systemd services
 # (MongoDB, PostgreSQL, RabbitMQ, nginx, Java Network app) inside Podman. For
 # ~8 managed devices and ~70 clients (this fleet), use at least:
-#   cores = 4, memory = 4096, disk = 20 (template default).
+#   cores = 2, memory = 3072, disk = 20 (template default).
+# pve1 has 4 cores total, so 2 keeps the hypervisor + other guests breathing.
 # Memory ballooning is disabled in the VM template, so allocate what the stack
 # needs outright.
 
