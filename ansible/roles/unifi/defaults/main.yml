@@ -1,0 +1,43 @@
+# UniFi OS Server role defaults.
+#
+# UniFi OS Server (UOS) is Ubiquiti's current self-hosted controller (the
+# standalone UniFi Network Application deb is deprecated). UOS is a
+# self-extracting installer that sets up its own Podman + systemd stack and a
+# `uosserver` systemd unit; it assumes it is the ONLY Podman manager on the
+# host, so this VM must be dedicated.
+#
+# UOS officially requires an x86-64 CPU, Debian 13+/Ubuntu 24.04+, podman
+# 4.9.3+ (pasta networking) and slirp4netns 1.2+. Debian 13 ships podman 5.x.
+
+# Installer download URL. Ubiquiti does not host a stable 'latest' URL - the
+# fw-download.ubnt.com path includes a rotated hash per release. Pin the
+# current release from https://ui.com/download (Software > UniFi OS Server,
+# copy the Linux x64 link) and update manually.
+unifi_download_url: "https://fw-download.ubnt.com/data/unifi-os-server/1856-linux-x64-5.0.6-33f4990f-6c68-4e72-9d9c-477496c22450.6-x64"
+
+# md5 of the pinned installer (verify when bumping the URL above).
+unifi_installer_checksum: "md5:610b385c834bad7c4db00c29e2b8a9f1"
+
+# Local path for the downloaded installer.
+unifi_installer_path: "/tmp/unifi-os-server-linux-x64"
+
+# Web UI port UOS listens on (https). Used to wait for readiness.
+unifi_web_port: 11443
+
+# Deploy-time sizing (deploy/deployments.tf): UOS runs ~15 systemd services
+# (MongoDB, PostgreSQL, RabbitMQ, nginx, Java Network app) inside Podman. For
+# ~8 managed devices and ~70 clients (this fleet), use at least:
+#   cores = 4, memory = 4096, disk = 20 (template default).
+# Memory ballooning is disabled in the VM template, so allocate what the stack
+# needs outright.
+
+# UOS stores its data outside the dpkg system. Exclude these from aide so
+# manual `aide --check` runs don't flag container/data churn, and rebaseline
+# rkhunter/aide once after install so weekly integrity emails stay quiet.
+unifi_aide_excludes:
+  - "/var/lib/containers"
+  - "/var/lib/uosserver"
+  - "/var/lib/unifi"
+  - "/data"
+  - "/persistent"
+  - "/srv"

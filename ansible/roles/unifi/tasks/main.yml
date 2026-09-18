@@ -1,0 +1,83 @@
+---
+- name: Check for an existing UniFi OS Server installation
+  ansible.builtin.stat:
+    path: /etc/systemd/system/uosserver.service
+  register: unifi_uosserver_unit
+
+- name: Check for uosserver unit in the systemd library dir
+  ansible.builtin.stat:
+    path: /usr/lib/systemd/system/uosserver.service
+  register: unifi_uosserver_unit_lib
+
+- name: Install UniFi OS Server prerequisites
+  ansible.builtin.apt:
+    name:
+      - podman
+      - slirp4netns
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+
+# The installer is not idempotent: re-running it after a partial failure can
+# leave a half-configured stack. Download to /tmp and only run once, guarded by
+# the uosserver unit existing above.
+- name: Download UniFi OS Server installer
+  ansible.builtin.get_url:
+    url: "{{ unifi_download_url }}"
+    dest: "{{ unifi_installer_path }}"
+    mode: "0755"
+    checksum: "{{ unifi_installer_checksum }}"
+  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+
+- name: Run UniFi OS Server installer
+  ansible.builtin.shell:
+    cmd: "yes y | {{ unifi_installer_path }}"
+    creates: /etc/systemd/system/uosserver.service
+  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+
+- name: Enable and start UniFi OS Server
+  ansible.builtin.systemd:
+    name: uosserver
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for UniFi OS Server web UI
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ unifi_web_port }}"
+    timeout: 300
+
+- name: Remove downloaded installer
+  ansible.builtin.file:
+    path: "{{ unifi_installer_path }}"
+    state: absent
+
+# ---- Integrity-scan rebaselining ------------------------------------------
+# UOS installs a large Podman stack after firstboot already ran aideinit and
+# rkhunter --propupd, so the weekly checks would flag every UOS file. Exclude
+# UOS/podman storage from aide and rebaseline both tools after the install.
+
+- name: Exclude UniFi OS Server storage from aide
+  ansible.builtin.copy:
+    dest: /etc/aide/aide.conf.d/98-unifi-os.conf
+    mode: "0644"
+    owner: root
+    group: root
+    content: |
+      # Managed by Ansible (unifi role) - UniFi OS Server data + Podman storage.
+      {% for path in unifi_aide_excludes %}!{{ path }}
+      {% endfor %}
+  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+
+- name: Rebase aide database after UniFi OS Server install
+  ansible.builtin.command: aideinit -y
+  changed_when: false
+  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+
+- name: Refresh rkhunter baseline after UniFi OS Server install
+  ansible.builtin.command: rkhunter --propupd
+  changed_when: false
+  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists

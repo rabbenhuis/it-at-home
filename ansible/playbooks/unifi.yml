@@ -1,0 +1,6 @@
+---
+- name: Provision UniFi OS Server VM
+  hosts: all
+  become: true
+  roles:
+    - role: unifi

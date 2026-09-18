@@ -9,5 +9,6 @@ locals {
     unbound = "unbound.yml"
     haos    = "haos.yml"
     harden  = "harden.yml"
+    unifi   = "unifi.yml"
   }
 }
