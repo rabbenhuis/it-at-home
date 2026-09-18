@@ -61,8 +61,8 @@
     group: root
 
 - name: Configure unattended-upgrades (no reboot, purge unused)
-  ansible.builtin.copy:
-    src: "{{ playbook_dir }}/../roles/base/files/51unattended-upgrades"
+  ansible.builtin.template:
+    src: "{{ playbook_dir }}/../roles/base/templates/51unattended-upgrades.j2"
     dest: /etc/apt/apt.conf.d/51unattended-upgrades
     mode: "0644"
     owner: root

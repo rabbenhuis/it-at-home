@@ -11,6 +11,14 @@ if ! ls /etc/ssh/ssh_host_* >/dev/null 2>&1; then
   ssh-keygen -A 2>/dev/null || true
 fi
 
+# Templates bake the build container's hostname into the unattended-upgrades
+# Sender; rewrite it to this clone's real hostname so result emails come from
+# <hostname>@abbenhuis.net.
+if [[ -f /etc/apt/apt.conf.d/51unattended-upgrades ]]; then
+  H="$(hostname -s)"
+  sed -i "s|^Unattended-Upgrade::Sender .*|Unattended-Upgrade::Sender \"${H} <${H}@abbenhuis.net>\";|" /etc/apt/apt.conf.d/51unattended-upgrades
+fi
+
 if command -v aide >/dev/null 2>&1; then
   aideinit -y >/dev/null 2>&1 || true
   [[ -f /var/lib/aide/aide.db.new ]] && mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db || true

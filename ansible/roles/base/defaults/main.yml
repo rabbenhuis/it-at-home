@@ -1,6 +1,10 @@
 msmtp_host: mta.abbenhuis.internal
 msmtp_port: 25
 msmtp_from: notify@abbenhuis.net
+
+# From header for unattended-upgrades result emails (hostname resolved at clone
+# first-boot by firstboot.sh, which rewrites the Sender line).
+unattended_upgrades_sender: "{{ ansible_hostname }} <{{ ansible_hostname }}@abbenhuis.net>"
 msmtp_user: ""
 msmtp_password: ""
 msmtp_auth: "off"
