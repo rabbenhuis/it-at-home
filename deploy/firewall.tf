@@ -36,6 +36,13 @@ locals {
   adguard_dns_vlans   = [37, 70, 75, 80, 90, 95, 100, 115, 120, 122, 132, 150, 152, 160]
   adguard_dns_sources = [for id in local.adguard_dns_vlans : module.cluster.vlans[id]]
 
+  # VLANs hosting UniFi managed devices (switches/APs), which must reach the
+  # UniFi OS Server for inform/adoption/STUN/discovery. Rendered into the
+  # cluster-level ipset 'unifi-device-sources'. Add any VLAN that carries UniFi
+  # gear here (device VLANs only - client VLANs never talk to the controller).
+  unifi_device_vlans   = [37]
+  unifi_device_sources = [for id in local.unifi_device_vlans : module.cluster.vlans[id]]
+
   firewall_rules = {
     adguard = [
       # Environment-wide DNS server: 53 open to the AdGuard-served VLANs only.
@@ -56,6 +63,21 @@ locals {
       { type  = "in", action = "ACCEPT", proto = "tcp",
         dport = "53,5353,5354,5355,5356,5357",
       source = "+adguard-servers", comment = "DNS + views over TCP (AdGuard)" },
+      { type = "in", action = "DROP", comment = "Deny other inbound" },
+    ]
+    unifi = [
+      # UniFi OS Server: admin UI on 11443 (web console) from mgmt VLANs.
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "11443",
+      source = "+mgmt-sources", comment = "Admin UI (mgmt)" },
+      # Device adoption/inform + STUN + discovery from the UniFi device VLAN(s).
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "8080",
+      source = "+unifi-device-sources", comment = "Device inform (UniFi devices)" },
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "3478",
+      source = "+unifi-device-sources", comment = "STUN (UniFi devices)" },
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "10001",
+      source = "+unifi-device-sources", comment = "Device adoption (UniFi devices)" },
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "10003",
+      source = "+unifi-device-sources", comment = "Device discovery (UniFi devices)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     # haos: add when a Home Assistant host is deployed (e.g. tcp 80/443/8123 from mgmt).

@@ -48,3 +48,21 @@ resource "proxmox_virtual_environment_firewall_ipset" "adguard_servers" {
     }
   }
 }
+
+# VLANs hosting UniFi managed devices (switches/APs) - the only sources that
+# may reach the UniFi OS Server on inform/adoption/STUN/discovery ports.
+# Referenced from the unifi role's rules as source "+unifi-device-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "unifi_device_sources" {
+  provider = proxmox.pve1
+
+  name    = "unifi-device-sources"
+  comment = "UniFi managed devices (may adopt to the UniFi OS Server)"
+
+  dynamic "cidr" {
+    for_each = local.unifi_device_sources
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}

@@ -100,6 +100,21 @@ locals {
       backup        = "tier-0"
       description   = "Secondary recursive resolver (Managed by Terraform)"
     }
+    unifi01 = {
+      type          = "vm"
+      target        = "pve1"
+      vlan_id       = 37
+      template_vmid = 9200
+      vmid          = 100
+      cores         = 4
+      memory        = 4096
+      ip            = "192.168.37.40/24"
+      on_boot       = true
+      startup       = { order = 30, up_delay = 15, down_delay = 180 }
+      role          = "unifi"
+      backup        = "tier-1"
+      description   = "UniFi OS Server - Network controller for UniFi gear (Managed by Terraform)"
+    }
     # web1 = {
     #   type          = "lxc"
     #   target        = "pve1"

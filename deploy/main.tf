@@ -65,6 +65,7 @@ module "deploy_pve1" {
     proxmox_virtual_environment_firewall_ipset.adguard_dns_sources,
     proxmox_virtual_environment_firewall_ipset.mgmt_sources,
     proxmox_virtual_environment_firewall_ipset.adguard_servers,
+    proxmox_virtual_environment_firewall_ipset.unifi_device_sources,
   ]
 
   for_each = local.pve1_hosts
@@ -109,6 +110,7 @@ module "deploy_pve1" {
 #     proxmox_virtual_environment_firewall_ipset.adguard_dns_sources,
 #     proxmox_virtual_environment_firewall_ipset.mgmt_sources,
 #     proxmox_virtual_environment_firewall_ipset.adguard_servers,
+#     proxmox_virtual_environment_firewall_ipset.unifi_device_sources,
 #   ]
 #
 #   for_each = local.pve2_hosts
