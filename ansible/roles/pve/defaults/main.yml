@@ -11,7 +11,7 @@ msmtp_logfile: /var/log/msmtp
 
 # From header for unattended-upgrades result emails. Rendered with the real
 # hostname on the PVE host (the pve role runs directly on it, not via a clone).
-unattended_upgrades_sender: "{{ ansible_hostname }} <{{ ansible_hostname }}@abbenhuis.net>"
+unattended_upgrades_sender: "{{ ansible_facts['hostname'] }} <{{ ansible_facts['hostname'] }}@abbenhuis.net>"
 
 # OS password (SHA-512 crypt hash) for the sysadm1n account. PVE users in the
 # pam realm authenticate against the OS user, so without a password the PVE web
