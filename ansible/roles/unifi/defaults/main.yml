@@ -24,6 +24,11 @@ unifi_installer_path: "/tmp/unifi-os-server-linux-x64"
 # Web UI port UOS listens on (https). Used to wait for readiness.
 unifi_web_port: 11443
 
+# OOM safety net: the VM has no swap disk (deploy sets swap=0, LXC-only), so
+# create a swapfile at the sizes below. Sized for the 3GB/3072MB allocation.
+unifi_swapfile_path: "/swapfile"
+unifi_swapfile_size: "2G"
+
 # Deploy-time sizing (deploy/deployments.tf): UOS runs ~15 systemd services
 # (MongoDB, PostgreSQL, RabbitMQ, nginx, Java Network app) inside Podman. For
 # ~8 managed devices and ~70 clients (this fleet), use at least:
@@ -41,3 +46,4 @@ unifi_aide_excludes:
   - "/data"
   - "/persistent"
   - "/srv"
+  - "/swapfile"

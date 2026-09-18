@@ -55,6 +55,31 @@
     path: "{{ unifi_installer_path }}"
     state: absent
 
+# ---- Swapfile (OOM safety net) ---------------------------------------------
+# The deploy module's `swap` variable only applies to the LXC container
+# resource (memory.swap); the VM resource sets dedicated memory only and has no
+# swap disk. Create a swapfile instead so a 3GB VM has a cushion.
+
+- name: Check for existing swapfile
+  ansible.builtin.stat:
+    path: "{{ unifi_swapfile_path }}"
+  register: unifi_swapfile
+
+- name: Create and enable swapfile
+  ansible.builtin.shell: |
+    fallocate -l {{ unifi_swapfile_size }} {{ unifi_swapfile_path }}
+    chmod 600 {{ unifi_swapfile_path }}
+    mkswap {{ unifi_swapfile_path }} >/dev/null
+    swapon {{ unifi_swapfile_path }}
+  when: not unifi_swapfile.stat.exists
+
+- name: Persist swapfile in fstab
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    line: "{{ unifi_swapfile_path }} none swap sw 0 0"
+    create: true
+    mode: "0644"
+
 # ---- Integrity-scan rebaselining ------------------------------------------
 # UOS installs a large Podman stack after firstboot already ran aideinit and
 # rkhunter --propupd, so the weekly checks would flag every UOS file. Exclude

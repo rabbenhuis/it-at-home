@@ -107,7 +107,7 @@ locals {
       template_vmid = 9200
       vmid          = 100
       cores         = 4
-      memory        = 4096
+      memory        = 3072
       ip            = "192.168.37.40/24"
       on_boot       = true
       startup       = { order = 30, up_delay = 15, down_delay = 180 }
