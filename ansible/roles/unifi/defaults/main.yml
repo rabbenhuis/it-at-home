@@ -18,8 +18,21 @@ unifi_download_url: "https://fw-download.ubnt.com/data/unifi-os-server/1856-linu
 # md5 of the pinned installer (verify when bumping the URL above).
 unifi_installer_checksum: "md5:610b385c834bad7c4db00c29e2b8a9f1"
 
-# Local path for the downloaded installer.
-unifi_installer_path: "/tmp/unifi-os-server-linux-x64"
+# Local path for the downloaded installer. MUST be on a disk-backed mount:
+# the Debian cloud image mounts /tmp as a RAM-backed tmpfs (half of RAM), which
+# is too small for the ~2GB podman image unpack the installer performs (it
+# failed there with ENOSPC). /var/tmp is on the root disk.
+unifi_installer_path: "/var/tmp/unifi-os-server-linux-x64"
+
+# podman unpacks the container image into $TMPDIR (default /tmp). Point it at
+# the root disk so image loading never hits the small /tmp tmpfs.
+unifi_install_tmpdir: "/var/tmp"
+
+# Marker file written only after a fully successful install (web UI reachable).
+# Used as the idempotency guard instead of the uosserver unit file, because the
+# installer creates the unit BEFORE loading the container image - a partial
+# failure leaves the unit present but a broken install.
+unifi_install_marker: "/var/lib/uosserver/.ansible-unifi-installed"
 
 # Web UI port UOS listens on (https). Used to wait for readiness.
 unifi_web_port: 11443

@@ -1,5 +1,15 @@
 ---
-- name: Check for an existing UniFi OS Server installation
+# Install-marker guard: written ONLY after a fully successful run (install +
+# swapfile + integrity rebaseline all done). The installer creates the
+# uosserver unit/config BEFORE loading the container image, so a partial
+# failure leaves a unit behind but no image; the marker (plus the container
+# state check below) distinguishes that from a healthy install.
+- name: Check for a completed UniFi OS Server installation
+  ansible.builtin.stat:
+    path: "{{ unifi_install_marker }}"
+  register: unifi_installed
+
+- name: Check for an existing (possibly partial) uosserver unit
   ansible.builtin.stat:
     path: /etc/systemd/system/uosserver.service
   register: unifi_uosserver_unit
@@ -8,6 +18,32 @@
   ansible.builtin.stat:
     path: /usr/lib/systemd/system/uosserver.service
   register: unifi_uosserver_unit_lib
+
+- name: Check whether the UniFi OS Server container is running
+  ansible.builtin.command: /usr/local/bin/uosserver status
+  register: unifi_uos_status
+  changed_when: false
+  failed_when: false
+  when:
+    - not unifi_installed.stat.exists
+    - unifi_uosserver_unit.stat.exists or unifi_uosserver_unit_lib.stat.exists
+
+- name: Set UOS running state
+  ansible.builtin.set_fact:
+    unifi_uos_running: "{{ (unifi_uos_status.stdout | default('')) is search('Up') }}"
+
+# The installer creates the uosserver unit and config BEFORE loading the
+# container image, so a failed install leaves a unit behind but no image. Only
+# purge when the unit exists AND no container is running (a healthy install
+# that just lost its marker must not be wiped).
+- name: Purge partial UniFi OS Server installation
+  ansible.builtin.shell: |
+    yes y | /usr/local/bin/uosserver-purge || true
+  changed_when: false
+  when:
+    - not unifi_installed.stat.exists
+    - unifi_uosserver_unit.stat.exists or unifi_uosserver_unit_lib.stat.exists
+    - not unifi_uos_running
 
 - name: Install UniFi OS Server prerequisites
   ansible.builtin.apt:
@@ -18,24 +54,54 @@
     update_cache: true
   environment:
     DEBIAN_FRONTEND: noninteractive
-  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+  when: not unifi_installed.stat.exists and not unifi_uos_running
+
+# ---- Disk-backed /tmp -------------------------------------------------------
+# The Debian cloud image mounts /tmp as a RAM tmpfs (systemd tmp.mount,
+# size=50% of RAM). The UOS installer unpacks the container image into
+# $TMPDIR of the uosserver user, which defaults to /tmp (sudo strips any
+# TMPDIR we set), and needs ~2GB there - impossible on a 1.4G tmpfs. Mask
+# tmp.mount so /tmp is a plain directory on the root disk instead.
+# Run on every pass: masking is idempotent and harmless once installed.
+
+- name: Disable the RAM-backed /tmp tmpfs
+  ansible.builtin.systemd:
+    name: tmp.mount
+    masked: true
+
+- name: Unmount the /tmp tmpfs if still active
+  ansible.builtin.command: umount /tmp
+  register: unifi_umount_tmp
+  changed_when: unifi_umount_tmp.rc == 0
+  failed_when: false
+
+- name: Remove the bind-mount fstab entry if present (legacy approach)
+  ansible.builtin.lineinfile:
+    path: /etc/fstab
+    regexp: ".*/var/tmp/tmpfs-backing /tmp.*"
+    state: absent
+  when: not unifi_installed.stat.exists
 
 # The installer is not idempotent: re-running it after a partial failure can
-# leave a half-configured stack. Download to /tmp and only run once, guarded by
-# the uosserver unit existing above.
+# leave a half-configured stack. Download and run once, guarded by the
+# install-marker above.
 - name: Download UniFi OS Server installer
   ansible.builtin.get_url:
     url: "{{ unifi_download_url }}"
     dest: "{{ unifi_installer_path }}"
     mode: "0755"
     checksum: "{{ unifi_installer_checksum }}"
-  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+  when: not unifi_installed.stat.exists and not unifi_uos_running
 
+# /tmp is masked to the root disk above; the installer runs podman as the
+# uosserver user whose TMPDIR defaults to /tmp, so the disk-backed /tmp gives
+# it room. TMPDIR is also set for good measure.
 - name: Run UniFi OS Server installer
   ansible.builtin.shell:
     cmd: "yes y | {{ unifi_installer_path }}"
-    creates: /etc/systemd/system/uosserver.service
-  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+  environment:
+    TMPDIR: "{{ unifi_install_tmpdir }}"
+  when: not unifi_installed.stat.exists and not unifi_uos_running
 
 - name: Enable and start UniFi OS Server
   ansible.builtin.systemd:
@@ -49,6 +115,7 @@
     host: 127.0.0.1
     port: "{{ unifi_web_port }}"
     timeout: 300
+  when: not unifi_installed.stat.exists
 
 - name: Remove downloaded installer
   ansible.builtin.file:
@@ -95,14 +162,25 @@
       # Managed by Ansible (unifi role) - UniFi OS Server data + Podman storage.
       {% for path in unifi_aide_excludes %}!{{ path }}
       {% endfor %}
-  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+  when: not unifi_installed.stat.exists
 
 - name: Rebase aide database after UniFi OS Server install
-  ansible.builtin.command: aideinit -y
+  ansible.builtin.shell: |
+    aideinit -y
+    [ -f /var/lib/aide/aide.db.new ] && mv -f /var/lib/aide/aide.db.new /var/lib/aide/aide.db
   changed_when: false
-  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+  when: not unifi_installed.stat.exists
 
 - name: Refresh rkhunter baseline after UniFi OS Server install
   ansible.builtin.command: rkhunter --propupd
   changed_when: false
-  when: not unifi_uosserver_unit.stat.exists and not unifi_uosserver_unit_lib.stat.exists
+  when: not unifi_installed.stat.exists
+
+# Marker is written LAST so a timeout mid-rebaseline does not leave a stale
+# "installed" marker that skips the remaining tasks on the next run.
+- name: Mark UniFi OS Server installation complete
+  ansible.builtin.file:
+    path: "{{ unifi_install_marker }}"
+    state: touch
+    mode: "0644"
+  when: not unifi_installed.stat.exists
