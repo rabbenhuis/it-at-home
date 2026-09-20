@@ -7,7 +7,7 @@ output "nodes" {
       endpoint        = "https://192.168.70.64:8006/"
       node_name       = "bm-pve-prd-01"
       architecture    = "amd64"
-      disk_datastore  = "local-lvm"
+      disk_datastore  = "local-ssd"
       image_datastore = "nas"
       bridge          = "vmbr0"
       vlan_id         = 70

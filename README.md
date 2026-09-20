@@ -281,7 +281,7 @@ not from the map):
 | `nameserver` | list(string) | – | DNS servers (registry: `vlans[id].nameserver`) |
 | `searchdomain` | string | – | DNS search domain (registry: `vlans[id].dns_zone`) |
 | `gateway` | string | – | IPv4 gateway (registry: `vlans[id].gateway`) |
-| `disk_datastore` | string | `local-lvm` | rootfs/disk datastore, LXC (registry) |
+| `disk_datastore` | string | `local-ssd` | rootfs/disk datastore, LXC (registry) |
 | `bridge` | string | `vmbr0` | network bridge (registry) |
 | `ssh_keys` | list(string) | `[]` | keys injected via cloud-init, VM only (registry) |
 | `on_boot` | bool | `true` | start at host boot (map, default `true`) |

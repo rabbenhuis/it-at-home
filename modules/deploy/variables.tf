@@ -125,7 +125,7 @@ variable "disk_size" {
 
 variable "disk_datastore" {
   type    = string
-  default = "local-lvm"
+  default = "local-ssd"
 }
 
 variable "bridge" {
