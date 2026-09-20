@@ -29,7 +29,7 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 ## Ansible specifics
 
 - Runs via pipx: **`~/.local/bin/ansible-playbook`** (system `ansible` is not installed). Run from the `ansible/` dir so `ansible.cfg` applies.
-- Playbooks target `hosts: all`; invoke with inline inventory `-i <IP>,`. SSH user: `native` → `root`, `podman`/`docker` → `ansible` (that user + key are baked into the native template; also `sysadm1n` for human maintenance), `vm` → `debian` (cloud-init user from the cloud image, key injected via `user_account`). Root login is disabled; `AllowUsers ansible sysadm1n`.
+- Playbooks target `hosts: all`; invoke with inline inventory `-i <IP>,`. SSH user: `native` → `root`, `podman`/`docker` → `ansible` (that user + key are baked into the native template; also `sysadm1n` for human maintenance), `vm` → `debian` (cloud-init user from the cloud image, key injected via `user_account`). Root login is disabled; `AllowUsers ansible sysadm1n debian` (debian must stay allowed: the VM template build connects as debian, and locking it out kills the ansible run mid-playbook).
 - Syntax check only: `~/.local/bin/ansible-playbook --syntax-check playbooks/harden.yml` (from `ansible/`).
 
 ## Proxmox host management (pve1/pve2)
@@ -48,6 +48,8 @@ Per-node settings (endpoint, node name, architecture, disk/image datastores, bri
 - `Protocol 2` is invalid on OpenSSH 10 (Debian 13) — omitted. `auditd` and `acct` are absent from the LXC base because kernel auditing/accounting can't run in an unprivileged LXC; `acct` **is** installed by the `vm` role (works in a full VM) and `auditd` by the `pve` role (works on the full hypervisor host). PVE uses `chrony` for NTP (no `systemd-timesyncd` unit), and the pve role keeps fail2ban's `proxmox` jail for pveproxy/pvedaemon brute-force protection.
 - Module input is `template_version`, not `version` (`version` is a reserved module meta-argument).
 - SSH host-key / machine-id / aide-db / firstboot.done are stripped in cleanup so templates ship clean; a `firstboot.service` regenerates them per clone. `firstboot.sh` must **not** call `systemctl restart ssh` (caused a boot deadlock).
+- **Don't add new SSH users without checking `AllowUsers`** — the VM template build connects as `debian` (cloud-init). If `debian` is dropped from `AllowUsers`, the ansible control connection is killed ~60s after the sshd drop-in is written and the build's tail tasks write 0-byte files into the template (silently, if the build's ansible exit is masked), producing broken clones (missing firstboot, empty netplan override, no static IP). `debian` is a no-op on LXC (no such user).
+- Netplan VMs (Debian 13/systemd 257): a static-IPv4 cloud-init config makes networkd auto-start a DHCPv6 client that fails with `ENOENT`, leaving eth0 `failed` and the static IP unapplied at boot. The vm role writes `/etc/netplan/99-ipv4-only.yaml` (`accept-ra:false`, `link-local:[]`, `dhcp6:false`) and `firstboot.sh` regenerates it as a safety net.
 - The VM template uses a static cloud image file id in the `nodes` output of `modules/cluster-data` (`modules/vm-template`); `initialization.user_account.username = "debian"`. The LXC ostemplate is likewise a static `nas:vztmpl/...` reference per node. Both images are provisioned manually per node (the `proxmox_download_file` resources were dropped because target-switching would destroy/redownload them).
 
 ## Layout

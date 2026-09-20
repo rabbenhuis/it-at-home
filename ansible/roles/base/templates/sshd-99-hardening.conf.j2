@@ -24,5 +24,8 @@ HostbasedAuthentication no
 IgnoreRhosts yes
 X11Forwarding no
 
-# Restrict SSH access to the admin users only.
-AllowUsers ansible sysadm1n
+# Restrict SSH access to the admin users only. debian is the cloud-init build
+# user on VM templates (only present there); it must stay allowed or the VM
+# template build gets locked out mid-run (ansible connects as debian, and the
+# sshd change kills new connections when the control socket expires).
+AllowUsers ansible sysadm1n debian

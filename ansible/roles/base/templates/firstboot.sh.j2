@@ -28,6 +28,27 @@ if command -v rkhunter >/dev/null 2>&1; then
   rkhunter --propupd >/dev/null 2>&1 || true
 fi
 
+# Netplan VMs: ensure the 99-ipv4-only.yaml override exists. It disables IPv6
+# RA/DHCPv6 on eth0, which on Debian 13/systemd 257 would otherwise make
+# networkd start a failing DHCPv6 client and leave eth0 in 'failed' state -
+# so the static IPv4 never applies. The vm role writes it at template build;
+# this is a safety net in case a clone's copy is missing/stale (e.g. a build
+# that was interrupted). Guarded by netplan being present (LXC templates use
+# PVE networking, not netplan).
+if command -v netplan >/dev/null 2>&1; then
+  cat > /etc/netplan/99-ipv4-only.yaml <<'EOF'
+network:
+  version: 2
+  ethernets:
+    eth0:
+      accept-ra: false
+      link-local: []
+      dhcp6: false
+EOF
+  chmod 600 /etc/netplan/99-ipv4-only.yaml
+  netplan apply >/dev/null 2>&1 || true
+fi
+
 touch /var/lib/firstboot.done
 systemctl disable --now firstboot.service 2>/dev/null || true
 exit 0
