@@ -148,6 +148,12 @@ resource "proxmox_virtual_environment_vm" "instance" {
   }
 
   initialization {
+    # Cloud-init drive datastore. Required explicitly on clones: the bpg
+    # provider defaults it to 'local-lvm', and the deploy clone does not declare
+    # a disk block (disks are inherited from the template), so without this the
+    # cloud-init drive would be created on non-existent local-lvm.
+    datastore_id = var.disk_datastore
+
     ip_config {
       ipv4 {
         address = var.ip
