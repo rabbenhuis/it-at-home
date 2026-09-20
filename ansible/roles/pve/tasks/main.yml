@@ -102,6 +102,14 @@
     - /etc/systemd/system/firstboot.service
     - /usr/local/bin/firstboot.sh
 
+# Netplan is absent on PVE (it uses ifupdown2), so the vm role's IPv4-only
+# override would never be generated here - but remove it anyway so a guest-only
+# file can't linger on a hypervisor if netplan is ever installed.
+- name: Remove netplan IPv4-only override (guest-only, not for hypervisors)
+  ansible.builtin.file:
+    path: /etc/netplan/99-ipv4-only.yaml
+    state: absent
+
 - name: Reload systemd after firstboot removal
   ansible.builtin.systemd:
     daemon_reload: true
