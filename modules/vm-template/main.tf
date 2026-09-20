@@ -62,6 +62,11 @@ resource "proxmox_virtual_environment_vm" "build" {
   }
 
   initialization {
+    # Cloud-init drive datastore. The bpg provider defaults it to 'local-lvm',
+    # which does not exist on this cluster (storage is 'local-ssd'); set it
+    # explicitly so the build VM's cloud-init drive lands on the right storage.
+    datastore_id = var.disk_datastore
+
     ip_config {
       ipv4 {
         address = var.ip
