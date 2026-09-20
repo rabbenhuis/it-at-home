@@ -35,7 +35,7 @@ locals {
       vlan_id       = 90
       template_vmid = 9000
       vmid          = 201
-      cores         = 2
+      cores         = 1
       memory        = 512
       cpuunits      = 4096
       disk_size     = 8
@@ -54,7 +54,7 @@ locals {
       template_vmid = 9000
       vmid          = 202
       cores         = 1
-      memory        = 1024
+      memory        = 512
       cpuunits      = 4096
       disk_size     = 8
       ip            = "192.168.90.41/24"
@@ -71,7 +71,7 @@ locals {
       vlan_id       = 90
       template_vmid = 9000
       vmid          = 205
-      cores         = 2
+      cores         = 1
       memory        = 512
       cpuunits      = 4096
       disk_size     = 8
@@ -93,7 +93,7 @@ locals {
       template_vmid = 9000
       vmid          = 206
       cores         = 1
-      memory        = 1024
+      memory        = 512
       cpuunits      = 4096
       disk_size     = 8
       ip            = "192.168.90.43/24"
