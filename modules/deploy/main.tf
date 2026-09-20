@@ -169,14 +169,38 @@ resource "proxmox_virtual_environment_vm" "instance" {
   }
 }
 
+# Per-guest PVE firewall options: enables the deny-by-default .fw ruleset.
+# The firewall_rules resource only writes the [RULES] section; without
+# [OPTIONS] enable: 1 PVE skips guest rule generation and installs an
+# ACCEPT-all chain (see PVE::Firewall generate_tap_rules_direction). Only
+# created when the host's role provides rules; created/destroyed with the host.
+resource "proxmox_virtual_environment_firewall_options" "instance" {
+  count = length(var.firewall_rules) > 0 ? 1 : 0
+
+  depends_on = [
+    proxmox_virtual_environment_container.instance,
+    proxmox_virtual_environment_vm.instance,
+  ]
+
+  node_name     = var.node_name
+  container_id  = var.type == "lxc" ? var.vmid : null
+  vm_id         = var.type == "vm" ? var.vmid : null
+  enabled       = true
+  input_policy  = "DROP"
+  output_policy = "ACCEPT"
+}
+
 # Per-guest PVE firewall rules (the .fw file is replaced wholesale). Only
 # created when the host's role provides rules; created/destroyed with the host.
+# Depends on the options resource so [OPTIONS] and [RULES] don't clobber each
+# other while writing the same .fw file.
 resource "proxmox_virtual_environment_firewall_rules" "instance" {
   count = length(var.firewall_rules) > 0 ? 1 : 0
 
   depends_on = [
     proxmox_virtual_environment_container.instance,
     proxmox_virtual_environment_vm.instance,
+    proxmox_virtual_environment_firewall_options.instance,
   ]
 
   node_name    = var.node_name
