@@ -90,6 +90,7 @@ module "deploy_pve1" {
   keyctl         = try(each.value.keyctl, null)
   cores          = try(each.value.cores, 0)
   memory         = try(each.value.memory, 0)
+  cpuunits       = try(each.value.cpuunits, 0)
   swap           = 0
   disk_size      = try(each.value.disk_size, 0)
   disk_datastore = module.cluster.nodes.pve1.disk_datastore
@@ -135,6 +136,7 @@ module "deploy_pve1" {
 #   keyctl         = try(each.value.keyctl, null)
 #   cores          = try(each.value.cores, 0)
 #   memory         = try(each.value.memory, 0)
+#   cpuunits       = try(each.value.cpuunits, 0)
 #   swap           = 0
 #   disk_size      = try(each.value.disk_size, 0)
 #   disk_datastore = module.cluster.nodes.pve2.disk_datastore

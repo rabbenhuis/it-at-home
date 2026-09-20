@@ -106,6 +106,12 @@ variable "memory" {
   default     = 0
 }
 
+variable "cpuunits" {
+  description = "CPU weight for fair-share scheduling; 0 inherits the template value (default 1024)"
+  type        = number
+  default     = 0
+}
+
 variable "swap" {
   type    = number
   default = 0

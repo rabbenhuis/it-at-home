@@ -11,6 +11,9 @@
 #   ip            static IPv4 in CIDR, on the VLAN's subnet
 #   cores         CPU cores (omit = inherit template)
 #   memory        RAM in MB (omit = inherit template)
+#   cpuunits      CPU weight for fair-share scheduling (omit = inherit template,
+#                 default 1024); raise on latency-sensitive hosts so they keep
+#                 responsive under CPU contention (e.g. DNS during VM deploys)
 #   disk_size     rootfs/disk in GB, LXC only (omit = inherit; VM disk is always inherited)
 #   on_boot       start at host boot (default true)
 #   startup       startup/shutdown order & delays: { order, up_delay?, down_delay? }
@@ -34,6 +37,7 @@ locals {
       vmid          = 201
       cores         = 2
       memory        = 512
+      cpuunits      = 4096
       disk_size     = 8
       ip            = "192.168.90.40/24"
       on_boot       = true
@@ -51,6 +55,7 @@ locals {
       vmid          = 202
       cores         = 1
       memory        = 1024
+      cpuunits      = 4096
       disk_size     = 8
       ip            = "192.168.90.41/24"
       on_boot       = true
@@ -68,6 +73,7 @@ locals {
       vmid          = 205
       cores         = 2
       memory        = 512
+      cpuunits      = 4096
       disk_size     = 8
       ip            = "192.168.90.42/24"
       on_boot       = true
@@ -88,6 +94,7 @@ locals {
       vmid          = 206
       cores         = 1
       memory        = 1024
+      cpuunits      = 4096
       disk_size     = 8
       ip            = "192.168.90.43/24"
       on_boot       = true
@@ -107,7 +114,7 @@ locals {
       template_vmid = 9200
       vmid          = 100
       cores         = 2
-      memory        = 3072
+      memory        = 4096
       ip            = "192.168.37.40/24"
       on_boot       = true
       startup       = { order = 30, up_delay = 15, down_delay = 180 }

@@ -35,6 +35,7 @@ resource "proxmox_virtual_environment_container" "instance" {
     content {
       architecture = var.architecture
       cores        = var.cores
+      units        = var.cpuunits > 0 ? var.cpuunits : null
     }
   }
 
@@ -127,6 +128,7 @@ resource "proxmox_virtual_environment_vm" "instance" {
     for_each = var.cores > 0 ? [1] : []
     content {
       cores = var.cores
+      units = var.cpuunits > 0 ? var.cpuunits : null
     }
   }
 
