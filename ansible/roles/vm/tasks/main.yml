@@ -1,4 +1,27 @@
 ---
+# Systemd-networkd on this cloud image auto-starts a DHCPv6 client (triggered
+# by IPv6 RA/NDisc handling implied by LinkLocalAddressing=ipv6) even on a
+# purely static-IPv4 config. On Debian 13/systemd 257 that client fails with
+# ENOENT, marking the interface 'failed' and refusing to retry, so the static
+# IPv4 from cloud-init never gets applied at boot (the host only gets an IPv6
+# link-local). netplan apply/reconfigure works around it, but it recurs on
+# every boot. Disable IPv6 RA + link-local + DHCPv6 on eth0 via a netplan
+# override that merges with the cloud-init-generated config on every clone.
+- name: Disable IPv6 RA/DHCPv6 on eth0 (boot-time networkd failure fix)
+  ansible.builtin.copy:
+    dest: /etc/netplan/99-ipv4-only.yaml
+    mode: "0600"
+    owner: root
+    group: root
+    content: |
+      network:
+        version: 2
+        ethernets:
+          eth0:
+            accept-ra: false
+            link-local: []
+            dhcp6: false
+
 - name: Install qemu-guest-agent
   ansible.builtin.apt:
     name: qemu-guest-agent
