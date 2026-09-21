@@ -278,6 +278,22 @@
   changed_when: false
   ignore_errors: true
 
+# Host-global memory tradeoff (swappiness is not namespaced, so it stays out of
+# the guest base template): keep swap as an emergency OOM buffer on the
+# hypervisor instead of filling it proactively.
+- name: Keep swap as an emergency buffer (swappiness)
+  ansible.builtin.copy:
+    src: swappiness.conf
+    dest: /etc/sysctl.d/99-swappiness.conf
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Apply swappiness setting
+  ansible.builtin.command: sysctl -p /etc/sysctl.d/99-swappiness.conf
+  changed_when: false
+  ignore_errors: true
+
 # --- sshd -----------------------------------------------------------------
 
 - name: Write sshd hardening drop-in
