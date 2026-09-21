@@ -95,6 +95,26 @@ fi
 
 ~/.local/bin/ansible-playbook -i "${IP}," -u "$ANSIBLE_USER" -b "$PLAY"
 
+# Guard against a build whose ansible run was interrupted partway (e.g. a
+# dropped SSH connection truncating in-flight file transfers to 0 bytes). A
+# broken template silently produces broken clones, so fail loudly here.
+log "Verifying template-critical files are non-empty on $IP"
+MISSING=""
+for f in /usr/local/bin/firstboot.sh /etc/systemd/system/firstboot.service; do
+  if [[ "$(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=4 "$ANSIBLE_USER@$IP" "stat -c %s $f 2>/dev/null || echo 0")" == "0" ]]; then
+    MISSING="$MISSING $f"
+  fi
+done
+if [[ "$ROLE" == "vm" ]] && [[ "$(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=4 "$ANSIBLE_USER@$IP" "stat -c %s /etc/netplan/99-ipv4-only.yaml 2>/dev/null || echo 0")" == "0" ]]; then
+  MISSING="$MISSING /etc/netplan/99-ipv4-only.yaml"
+fi
+if [[ -n "$MISSING" ]]; then
+  echo "ERROR: template build left 0-byte files ($MISSING) - ansible run was likely interrupted" >&2
+  echo "Fix the SSH/ansible issue (check MaxSessions/AllowUsers) and rebuild the template" >&2
+  exit 1
+fi
+log "Template-critical files OK"
+
 log "Stopping $API_PATH instance $VMID"
 curl -ksS -X POST -H "Authorization: $AUTH" "$API_URL/nodes/$NODE/$API_PATH/$VMID/status/stop"
 

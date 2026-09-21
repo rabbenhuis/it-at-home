@@ -10,7 +10,11 @@ AuthenticationMethods publickey
 PermitRootLogin no
 
 MaxAuthTries 3
-MaxSessions 2
+# MaxSessions must stay above the number of concurrent SSH sessions ansible
+# opens with pipelining (one per module). At 2, bursts of copy/template tasks
+# during template builds get the 3rd session rejected, truncating the in-flight
+# file transfer to 0 bytes (intermittent empty files baked into templates).
+MaxSessions 10
 LoginGraceTime 30
 AllowTcpForwarding no
 AllowAgentForwarding no
