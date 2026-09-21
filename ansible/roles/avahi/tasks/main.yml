@@ -22,6 +22,37 @@
     group: root
   notify: restart avahi-daemon
 
+# The extra (link-only) NICs are created by PVE without an IP config, so they
+# start DOWN and avahi cannot reflect on them. Bring them up before avahi.
+- name: Deploy avahi link-only NIC up script
+  ansible.builtin.template:
+    src: avahi-linkonly-up.sh.j2
+    dest: /usr/local/sbin/avahi-linkonly-up.sh
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Deploy avahi link-only NIC up unit
+  ansible.builtin.template:
+    src: avahi-linkonly-nics.service.j2
+    dest: /etc/systemd/system/avahi-linkonly-nics.service
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Reload systemd for the new unit
+  ansible.builtin.systemd:
+    daemon_reload: true
+
+- name: Enable avahi link-only NIC up unit (boot persistence)
+  ansible.builtin.systemd:
+    name: avahi-linkonly-nics
+    enabled: true
+
+- name: Bring up avahi link-only NICs now (idempotent)
+  ansible.builtin.command: /usr/local/sbin/avahi-linkonly-up.sh
+  changed_when: false
+
 - name: Enable and start avahi-daemon
   ansible.builtin.systemd:
     name: avahi-daemon

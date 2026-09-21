@@ -1,0 +1,11 @@
+[Unit]
+Description=Bring up link-only mDNS reflector NICs
+Before=avahi-daemon.service avahi-daemon.socket
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/avahi-linkonly-up.sh
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

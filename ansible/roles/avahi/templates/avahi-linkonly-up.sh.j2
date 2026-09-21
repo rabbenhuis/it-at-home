@@ -1,0 +1,13 @@
+#!/bin/sh
+# Bring up the link-only mDNS reflector NICs (created by PVE with no IP config,
+# so they start DOWN) and give each a unique IPv4 source address. avahi needs an
+# IPv4 address on an interface to send/receive IPv4 mDNS (224.0.0.251) on it;
+# without one it skips the interface entirely. Link-local 169.254.x.x is
+# non-routable, so it never conflicts with the VLAN subnets.
+set -eu
+for iface in {{ avahi_reflect_interfaces | join(' ') }}; do
+  ip link set dev "$iface" up 2>/dev/null || true
+done
+{% for iface in avahi_reflect_interfaces if iface != 'eth0' %}
+ip addr replace {{ '169.254.%d.1/16' | format(loop.index) }} dev {{ iface }} 2>/dev/null || true
+{% endfor %}
