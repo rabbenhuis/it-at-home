@@ -53,3 +53,11 @@ pve_obsolete_roles:
   - TerraformRole
   - Terraform-Deployer
   - TerraForm-Infra
+
+# Privileges granted to the PVE role "Terraform-Backup", scoped to the backup
+# storage path (/storage/nas) only. Keeps Datastore.Allocate off the
+# cluster-wide Terraform-Infra role; needed to create/edit the vzdump backup
+# jobs that deploy/backup.tf manages (tier-0..tier-3).
+pve_terraform_backup_privs:
+  - Datastore.Allocate
+  - Datastore.Audit

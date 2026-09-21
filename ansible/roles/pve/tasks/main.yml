@@ -157,6 +157,25 @@
   ansible.builtin.command: pveum aclmod / -user terraform@pve -role Terraform-Infra
   changed_when: false
 
+- name: Ensure Terraform-Backup role has the expected privileges
+  ansible.builtin.shell: |
+    set -e
+    PRIVS="{{ pve_terraform_backup_privs | join(',') }}"
+    if pveum role list --output-format json | grep -qE '"roleid"[[:space:]]*:[[:space:]]*"Terraform-Backup"'; then
+      pveum role modify Terraform-Backup -privs "$PRIVS"
+    else
+      pveum role add Terraform-Backup -privs "$PRIVS"
+    fi
+  changed_when: false
+
+# Backup jobs (deploy/backup.tf) are cluster-level, written via the pve1
+# provider and stored in /etc/pve/jobs.cfg; creating them requires
+# Datastore.Allocate on the backup storage. Grant that scoped to the nas
+# storage path only (kept off the cluster-wide Terraform-Infra role).
+- name: Grant Terraform-Backup role to terraform@pve on the backup storage
+  ansible.builtin.command: pveum aclmod /storage/nas -user terraform@pve -role Terraform-Backup
+  changed_when: false
+
 # Rename cleanup: PVE cannot rename roles, so the roles that preceded
 # Terraform-Infra (the manual TerraformRole on pve1, and the earlier
 # Terraform-Deployer name) are deleted here once no ACL references them anymore.
