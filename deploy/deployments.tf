@@ -15,6 +15,11 @@
 #                 default 1024); raise on latency-sensitive hosts so they keep
 #                 responsive under CPU contention (e.g. DNS during VM deploys)
 #   disk_size     rootfs/disk in GB, LXC only (omit = inherit; VM disk is always inherited)
+#   disk_datastore datastore for the disk: "local-ssd" (node default) or
+#                 "local-usbssd" (external USB SSD); omit = node default.
+#                 VM clones inherit their disk from the template, so this only
+#                 moves the VM's cloud-init drive - pick the datastore when
+#                 building the VM template instead.
 #   on_boot       start at host boot (default true)
 #   startup       startup/shutdown order & delays: { order, up_delay?, down_delay? }
 #                 (omit = left unset)

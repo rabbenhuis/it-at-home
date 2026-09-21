@@ -61,6 +61,12 @@ variable "target" {
   }
 }
 
+variable "disk_datastore" {
+  description = "Datastore for the build instance's disk. Empty = the node's default (local-ssd on pve1, local on pve2); set to override (e.g. local-usbssd)."
+  type        = string
+  default     = ""
+}
+
 module "cluster" {
   source = "./modules/cluster-data"
 }
@@ -101,7 +107,7 @@ module "template_native" {
   cores              = 1
   memory             = 512
   disk_size          = 8
-  disk_datastore     = local.node.disk_datastore
+  disk_datastore     = var.disk_datastore != "" ? var.disk_datastore : local.node.disk_datastore
   bridge             = local.node.bridge
   vlan_id            = local.node.vlan_id
   firewall           = true
@@ -135,7 +141,7 @@ module "template_podman" {
   cores              = 2
   memory             = 1024
   disk_size          = 16
-  disk_datastore     = local.node.disk_datastore
+  disk_datastore     = var.disk_datastore != "" ? var.disk_datastore : local.node.disk_datastore
   bridge             = local.node.bridge
   vlan_id            = local.node.vlan_id
   firewall           = true
@@ -169,7 +175,7 @@ module "template_docker" {
   memory             = 512
   swap               = 0
   disk_size          = 16
-  disk_datastore     = local.node.disk_datastore
+  disk_datastore     = var.disk_datastore != "" ? var.disk_datastore : local.node.disk_datastore
   bridge             = local.node.bridge
   vlan_id            = local.node.vlan_id
   firewall           = true
@@ -196,7 +202,7 @@ module "template_vm" {
   cores               = 2
   memory              = 4096
   disk_size           = 20
-  disk_datastore      = local.node.disk_datastore
+  disk_datastore      = var.disk_datastore != "" ? var.disk_datastore : local.node.disk_datastore
   bridge              = local.node.bridge
   vlan_id             = local.node.vlan_id
   firewall            = true

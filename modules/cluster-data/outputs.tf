@@ -8,6 +8,7 @@ output "nodes" {
       node_name       = "bm-pve-prd-01"
       architecture    = "amd64"
       disk_datastore  = "local-ssd"
+      usb_datastore   = "local-usbssd"
       image_datastore = "nas"
       bridge          = "vmbr0"
       vlan_id         = 70
@@ -25,10 +26,13 @@ output "nodes" {
     pve2 = {
       # Replace with the node IP once the Pi becomes pve2 (same as pve1: no
       # reliable hostname resolution for .abbenhuis.internal).
-      endpoint        = "https://bm-pve-prd-02.abbenhuis.internal:8006/"
-      node_name       = "bm-pve-prd-02"
-      architecture    = "arm64"
-      disk_datastore  = "local"
+      endpoint       = "https://bm-pve-prd-02.abbenhuis.internal:8006/"
+      node_name      = "bm-pve-prd-02"
+      architecture   = "arm64"
+      disk_datastore = "local"
+      # Placeholder until pve2 is installed: same storage id as pve1 for now,
+      # adjust once the Pi has its own external SSD configured.
+      usb_datastore   = "local-usbssd"
       image_datastore = "nas"
       bridge          = "vmbr0"
       vlan_id         = 70

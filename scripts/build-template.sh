@@ -12,12 +12,18 @@ set -euo pipefail
 #
 # Prereqs (env): TF_VAR_pm_api_token_id + per-node TF_VAR_pm_api_token_secret_<node>
 # (or BWS_ACCESS_TOKEN + BWS_PROJECT_ID; see scripts/_load-creds.sh)
-# Usage: ./build-template.sh <role> <version> <vmid> <node>
+# Usage: ./build-template.sh <role> <version> <vmid> [target] [datastore] [native-vmid]
+#   target     pve1 (default) or pve2; selects node/endpoint/arch/storage defaults
+#   datastore  optional; override where the build disk lands (e.g. local-usbssd).
+#              Empty = the node's default (local-ssd on pve1, local on pve2).
+#   native-vmid optional; clone source for podman/docker builds (default 9000).
 
-ROLE="${1:?usage: build-template.sh <role> <version> <vmid> [target]}"
+ROLE="${1:?usage: build-template.sh <role> <version> <vmid> [target] [datastore] [native-vmid]}"
 VERSION="${2:?}"
 VMID="${3:?}"
 TARGET="${4:-pve1}"
+DATASTORE="${5:-}"
+NATIVE_VMID="${6:-}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -63,11 +69,19 @@ esac
 
 log "Applying terraform (target=$TARGET role=$ROLE version=$VERSION vmid=$VMID node=$NODE)"
 cd "$ROOT"
+EXTRA_VARS=()
+if [[ -n "$DATASTORE" ]]; then
+  EXTRA_VARS+=(-var "disk_datastore=$DATASTORE")
+fi
+if [[ -n "$NATIVE_VMID" ]]; then
+  EXTRA_VARS+=(-var "native_template_vmid=$NATIVE_VMID")
+fi
 terraform apply -auto-approve \
   -var "target=$TARGET" \
   -var "template_role=$ROLE" \
   -var "template_version=$VERSION" \
-  -var "template_vmid=$VMID"
+  -var "template_vmid=$VMID" \
+  "${EXTRA_VARS[@]}"
 
 IP=$(terraform output -raw "${ROLE}_ip" | cut -d/ -f1)
 

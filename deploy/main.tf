@@ -93,7 +93,7 @@ module "deploy_pve1" {
   cpuunits       = try(each.value.cpuunits, 0)
   swap           = 0
   disk_size      = try(each.value.disk_size, 0)
-  disk_datastore = module.cluster.nodes.pve1.disk_datastore
+  disk_datastore = try(each.value.disk_datastore, module.cluster.nodes.pve1.disk_datastore)
   bridge         = module.cluster.nodes.pve1.bridge
   vlan_id        = each.value.vlan_id
   firewall       = true
@@ -139,7 +139,7 @@ module "deploy_pve1" {
 #   cpuunits       = try(each.value.cpuunits, 0)
 #   swap           = 0
 #   disk_size      = try(each.value.disk_size, 0)
-#   disk_datastore = module.cluster.nodes.pve2.disk_datastore
+#   disk_datastore = try(each.value.disk_datastore, module.cluster.nodes.pve2.disk_datastore)
 #   bridge         = module.cluster.nodes.pve2.bridge
 #   vlan_id        = each.value.vlan_id
 #   firewall       = true

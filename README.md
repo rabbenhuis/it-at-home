@@ -102,11 +102,14 @@ scripts/_deploy-helpers.py     # JSON helpers used by deploy-hosts.sh
 `scripts/build-template.sh` does everything in one command:
 
 ```bash
-./scripts/build-template.sh <role> <version> <vmid> [target]
+./scripts/build-template.sh <role> <version> <vmid> [target] [datastore] [native-vmid]
 ```
 
 `target` is `pve1` (default, amd64) or `pve2` (arm64); it selects the endpoint,
 node, architecture, storage and image files from the `nodes` map in `main.tf`.
+`datastore` optionally overrides where the build disk lands (e.g. `local-usbssd`;
+empty = the node default `local-ssd`). `native-vmid` sets the clone source for
+`podman`/`docker` builds (default `9000`).
 
 It will:
 1. `terraform apply` the selected module (`native`, `podman`, `docker`, or `vm`)
@@ -124,6 +127,11 @@ Example:
 ./scripts/build-template.sh vm 1 9200
 ./scripts/build-template.sh native 1 9000 pve2
 ./scripts/build-template.sh vm 1 9200 pve2
+# Templates on the external USB SSD (local-usbssd), v2:
+./scripts/build-template.sh native 2 9100 pve1 local-usbssd
+./scripts/build-template.sh podman 2 9110 pve1 local-usbssd 9100
+./scripts/build-template.sh docker 2 9120 pve1 local-usbssd 9100
+./scripts/build-template.sh vm 2 9130 pve1 local-usbssd
 ```
 
 `native` connects over SSH as `root`; `podman`/`docker` connect as the `ansible`
@@ -152,6 +160,7 @@ native HCL types, comments are allowed, and `terraform validate` catches errors:
 | `cores` | CPU cores (omit = inherit template) |
 | `memory` | RAM in MB (omit = inherit template) |
 | `disk_size` | rootfs/disk in GB, **LXC only** (omit = inherit; VM disk is always inherited) |
+| `disk_datastore` | datastore for the disk: `local-ssd` (node default) or `local-usbssd`; omit = node default. VM clones inherit their disk from the template, so this only moves the VM's cloud-init drive |
 | `on_boot` | start at host boot (default `true`) |
 | `startup` | startup/shutdown order and delays: `{ order, up_delay?, down_delay? }` (omit = unset) |
 | `unprivileged` | LXC only (default `true`) |
