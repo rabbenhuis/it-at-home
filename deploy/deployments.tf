@@ -35,40 +35,42 @@
 locals {
   deployments = {
     adguard-pri01 = {
-      type          = "lxc"
-      target        = "pve1"
-      vlan_id       = 90
-      template_vmid = 9000
-      vmid          = 201
-      cores         = 1
-      memory        = 512
-      cpuunits      = 4096
-      disk_size     = 8
-      ip            = "192.168.90.40/24"
-      on_boot       = true
-      startup       = { order = 20, up_delay = 15, down_delay = 60 }
-      unprivileged  = true
-      role          = "adguard"
-      backup        = "tier-0"
-      description   = "Primary AdGuard Home DNS blocker (Managed by Terraform)"
+      type           = "lxc"
+      target         = "pve1"
+      vlan_id        = 90
+      template_vmid  = 9000
+      vmid           = 201
+      cores          = 1
+      memory         = 512
+      cpuunits       = 4096
+      disk_size      = 8
+      disk_datastore = "local-usbssd"
+      ip             = "192.168.90.40/24"
+      on_boot        = true
+      startup        = { order = 20, up_delay = 15, down_delay = 60 }
+      unprivileged   = true
+      role           = "adguard"
+      backup         = "tier-0"
+      description    = "Primary AdGuard Home DNS blocker (Managed by Terraform)"
     }
     unbound-pri01 = {
-      type          = "lxc"
-      target        = "pve1"
-      vlan_id       = 90
-      template_vmid = 9000
-      vmid          = 202
-      cores         = 1
-      memory        = 512
-      cpuunits      = 4096
-      disk_size     = 8
-      ip            = "192.168.90.41/24"
-      on_boot       = true
-      startup       = { order = 20, up_delay = 15, down_delay = 60 }
-      unprivileged  = true
-      role          = "unbound"
-      backup        = "tier-0"
-      description   = "Primary recursive resolver (Managed by Terraform)"
+      type           = "lxc"
+      target         = "pve1"
+      vlan_id        = 90
+      template_vmid  = 9000
+      vmid           = 202
+      cores          = 1
+      memory         = 512
+      cpuunits       = 4096
+      disk_size      = 8
+      disk_datastore = "local-usbssd"
+      ip             = "192.168.90.41/24"
+      on_boot        = true
+      startup        = { order = 20, up_delay = 15, down_delay = 60 }
+      unprivileged   = true
+      role           = "unbound"
+      backup         = "tier-0"
+      description    = "Primary recursive resolver (Managed by Terraform)"
     }
     adguard-sec01 = {
       type          = "lxc"
@@ -113,19 +115,20 @@ locals {
       description   = "Secondary recursive resolver (Managed by Terraform)"
     }
     unifi01 = {
-      type          = "vm"
-      target        = "pve1"
-      vlan_id       = 37
-      template_vmid = 9200
-      vmid          = 100
-      cores         = 2
-      memory        = 4096
-      ip            = "192.168.37.40/24"
-      on_boot       = true
-      startup       = { order = 30, up_delay = 15, down_delay = 180 }
-      role          = "unifi"
-      backup        = "tier-1"
-      description   = "UniFi OS Server - Network controller for UniFi gear (Managed by Terraform)"
+      type           = "vm"
+      target         = "pve1"
+      vlan_id        = 37
+      template_vmid  = 9200
+      vmid           = 100
+      cores          = 2
+      memory         = 4096
+      disk_datastore = "local-usbssd"
+      ip             = "192.168.37.40/24"
+      on_boot        = true
+      startup        = { order = 30, up_delay = 15, down_delay = 180 }
+      role           = "unifi"
+      backup         = "tier-1"
+      description    = "UniFi OS Server - Network controller for UniFi gear (Managed by Terraform)"
     }
     # web1 = {
     #   type          = "lxc"
