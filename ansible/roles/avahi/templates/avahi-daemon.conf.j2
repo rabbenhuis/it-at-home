@@ -1,0 +1,9 @@
+[server]
+use-ipv4=yes
+use-ipv6=no
+allow-interfaces={{ avahi_reflect_interfaces | join(',') }}
+deny-interfaces=lo
+
+[reflector]
+enable-reflector=yes
+reflect-ipv={{ 'yes' if avahi_reflect_ipv6 else 'no' }}

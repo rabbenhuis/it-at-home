@@ -83,6 +83,18 @@ resource "proxmox_virtual_environment_container" "instance" {
     vlan_id  = var.vlan_id
   }
 
+  # Link-only extra NICs (eth1..N): no IP, one VLAN each. Used e.g. by an mDNS
+  # reflector to receive multicast on several VLANs without addresses.
+  dynamic "network_interface" {
+    for_each = var.extra_networks
+    content {
+      name     = "eth${network_interface.key + 1}"
+      bridge   = var.bridge
+      firewall = network_interface.value.firewall
+      vlan_id  = network_interface.value.vlan_id
+    }
+  }
+
   dynamic "disk" {
     for_each = var.disk_size > 0 ? [1] : []
     content {
@@ -175,6 +187,85 @@ resource "proxmox_virtual_environment_vm" "instance" {
   }
 }
 
+# Home Assistant OS (HAOS): an appliance image (haos_ova-<ver>.qcow2), NOT a
+# clone of the Debian VM template. The image is imported fresh per deploy
+# (static nas:import/ reference provisioned manually, like the Debian cloud
+# image). HAOS requires UEFI (OVMF/q35), an EFI disk and a scsi0 boot disk; it
+# has no cloud-init (the map's `ip` is applied manually via the HAOS console
+# after first boot) and is managed by its own UI, so no ansible provisioning.
+# qemu-guest-agent is baked into the image (enabled here so the PVE UI shows
+# the guest IP/uptime and HAOS exposes host stats).
+resource "proxmox_virtual_environment_vm" "haos" {
+  count = var.type == "haos" ? 1 : 0
+
+  description = var.description
+  name        = var.hostname
+  node_name   = var.node_name
+  vm_id       = var.vmid
+  started     = true
+  on_boot     = var.on_boot
+
+  stop_on_destroy = true
+
+  bios    = "ovmf"
+  machine = "q35"
+
+  agent {
+    enabled = true
+  }
+
+  dynamic "startup" {
+    for_each = var.startup != null ? [1] : []
+    content {
+      order      = tostring(var.startup.order)
+      up_delay   = var.startup.up_delay != null ? tostring(var.startup.up_delay) : null
+      down_delay = var.startup.down_delay != null ? tostring(var.startup.down_delay) : null
+    }
+  }
+
+  dynamic "cpu" {
+    for_each = var.cores > 0 ? [1] : []
+    content {
+      cores = var.cores
+      units = var.cpuunits > 0 ? var.cpuunits : null
+    }
+  }
+
+  dynamic "memory" {
+    for_each = var.memory > 0 ? [1] : []
+    content {
+      dedicated = var.memory
+    }
+  }
+
+  # EFI disk required by OVMF; type "4m".
+  efi_disk {
+    datastore_id      = var.disk_datastore
+    type              = "4m"
+    pre_enrolled_keys = true
+  }
+
+  # scsi0 = the imported HAOS qcow2, grown to the requested size.
+  disk {
+    datastore_id = var.disk_datastore
+    interface    = "scsi0"
+    size         = var.disk_size
+    import_from  = var.haos_image
+  }
+
+  network_device {
+    bridge   = var.bridge
+    firewall = var.firewall
+    vlan_id  = var.vlan_id
+    # VirtIO multiqueue (matches the vm template).
+    queues = 2
+  }
+
+  operating_system {
+    type = "l26"
+  }
+}
+
 # Per-guest PVE firewall options: enables the deny-by-default .fw ruleset.
 # The firewall_rules resource only writes the [RULES] section; without
 # [OPTIONS] enable: 1 PVE skips guest rule generation and installs an
@@ -186,11 +277,12 @@ resource "proxmox_virtual_environment_firewall_options" "instance" {
   depends_on = [
     proxmox_virtual_environment_container.instance,
     proxmox_virtual_environment_vm.instance,
+    proxmox_virtual_environment_vm.haos,
   ]
 
   node_name     = var.node_name
   container_id  = var.type == "lxc" ? var.vmid : null
-  vm_id         = var.type == "vm" ? var.vmid : null
+  vm_id         = var.type == "vm" || var.type == "haos" ? var.vmid : null
   enabled       = true
   input_policy  = "DROP"
   output_policy = "ACCEPT"
@@ -206,12 +298,13 @@ resource "proxmox_virtual_environment_firewall_rules" "instance" {
   depends_on = [
     proxmox_virtual_environment_container.instance,
     proxmox_virtual_environment_vm.instance,
+    proxmox_virtual_environment_vm.haos,
     proxmox_virtual_environment_firewall_options.instance,
   ]
 
   node_name    = var.node_name
   container_id = var.type == "lxc" ? var.vmid : null
-  vm_id        = var.type == "vm" ? var.vmid : null
+  vm_id        = var.type == "vm" || var.type == "haos" ? var.vmid : null
 
   dynamic "rule" {
     for_each = var.firewall_rules

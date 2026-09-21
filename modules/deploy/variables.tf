@@ -118,7 +118,7 @@ variable "swap" {
 }
 
 variable "disk_size" {
-  description = "Rootfs/disk size in GB (LXC only); 0 inherits the template value"
+  description = "Rootfs/disk size in GB (LXC) or HAOS image disk (haos type); 0 inherits the template value"
   type        = number
   default     = 0
 }
@@ -135,6 +135,21 @@ variable "bridge" {
 
 variable "vlan_id" {
   type = number
+}
+
+variable "extra_networks" {
+  description = "Additional link-only LXC network interfaces (eth1..N, no IP). Each: { vlan_id, firewall? }. lxc only."
+  type = list(object({
+    vlan_id  = number
+    firewall = optional(bool, true)
+  }))
+  default = []
+}
+
+variable "haos_image" {
+  description = "HAOS qcow2 image file id (e.g. nas:import/haos_ova-18.2.qcow2); used by the haos VM branch"
+  type        = string
+  default     = ""
 }
 
 variable "firewall" {

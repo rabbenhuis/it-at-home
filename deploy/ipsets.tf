@@ -66,3 +66,73 @@ resource "proxmox_virtual_environment_firewall_ipset" "unifi_device_sources" {
     }
   }
 }
+
+# Management VLANs allowed to reach the Home Assistant UI (port 8123).
+# Referenced from the haos role's rule as source "+haos-ui-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "haos_ui_sources" {
+  provider = proxmox.pve1
+
+  name    = "haos-ui-sources"
+  comment = "VLANs allowed to reach the Home Assistant UI"
+
+  dynamic "cidr" {
+    for_each = local.firewall_haos_ui_sources
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}
+
+# IoT VLANs that Home Assistant integrates with (MQTT/Matter/zigbee2mqtt,
+# Chromecast/Nest devices). Referenced from the haos role's IoT rules as
+# source "+haos-iot-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "haos_iot_sources" {
+  provider = proxmox.pve1
+
+  name    = "haos-iot-sources"
+  comment = "IoT VLANs Home Assistant integrates with"
+
+  dynamic "cidr" {
+    for_each = local.firewall_haos_iot_sources
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}
+
+# WireGuard overlay clients (wg-home, 172.18.10.0/24) - all peers may reach the
+# HAOS UI. Also folded into adguard_dns_sources for DNS. Referenced from the
+# haos role's rule as source "+wg-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "wg_sources" {
+  provider = proxmox.pve1
+
+  name    = "wg-sources"
+  comment = "WireGuard clients (wg-home)"
+
+  dynamic "cidr" {
+    for_each = local.firewall_wg_client_cidrs
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}
+
+# WireGuard admin peers - wg-darth-sidious (private phone) and wg-laptop may
+# reach the UniFi controller. Referenced from the unifi role's rule as "+wg-admin".
+resource "proxmox_virtual_environment_firewall_ipset" "wg_admin" {
+  provider = proxmox.pve1
+
+  name    = "wg-admin"
+  comment = "WireGuard peers with admin service access"
+
+  dynamic "cidr" {
+    for_each = local.firewall_wg_admin_cidrs
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}

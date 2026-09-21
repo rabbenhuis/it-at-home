@@ -66,6 +66,10 @@ module "deploy_pve1" {
     proxmox_virtual_environment_firewall_ipset.mgmt_sources,
     proxmox_virtual_environment_firewall_ipset.adguard_servers,
     proxmox_virtual_environment_firewall_ipset.unifi_device_sources,
+    proxmox_virtual_environment_firewall_ipset.haos_ui_sources,
+    proxmox_virtual_environment_firewall_ipset.haos_iot_sources,
+    proxmox_virtual_environment_firewall_ipset.wg_sources,
+    proxmox_virtual_environment_firewall_ipset.wg_admin,
   ]
 
   for_each = local.pve1_hosts
@@ -73,7 +77,7 @@ module "deploy_pve1" {
   name           = each.key
   type           = each.value.type
   vmid           = each.value.vmid
-  template_vmid  = each.value.template_vmid
+  template_vmid  = try(each.value.template_vmid, 0)
   node_name      = module.cluster.nodes.pve1.node_name
   architecture   = module.cluster.nodes.pve1.architecture
   hostname       = each.key
@@ -96,6 +100,8 @@ module "deploy_pve1" {
   disk_datastore = try(each.value.disk_datastore, module.cluster.nodes.pve1.disk_datastore)
   bridge         = module.cluster.nodes.pve1.bridge
   vlan_id        = each.value.vlan_id
+  extra_networks = try(each.value.extra_networks, [])
+  haos_image     = module.cluster.nodes.pve1.haos_image
   firewall       = true
   firewall_rules = length(try(local.firewall_rules[each.value.role], [])) > 0 ? concat(local.firewall_mgmt_base, local.firewall_rules[each.value.role]) : []
   description    = try(each.value.description, "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})")
@@ -119,7 +125,7 @@ module "deploy_pve1" {
 #   name           = each.key
 #   type           = each.value.type
 #   vmid           = each.value.vmid
-#   template_vmid  = each.value.template_vmid
+#   template_vmid  = try(each.value.template_vmid, 0)
 #   node_name      = module.cluster.nodes.pve2.node_name
 #   architecture   = module.cluster.nodes.pve2.architecture
 #   hostname       = each.key

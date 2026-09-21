@@ -2,7 +2,8 @@
 # deployed containers/VMs; edit it, then run scripts/deploy-hosts.sh.
 #
 # Fields:
-#   type          "lxc" or "vm"
+#   type          "lxc", "vm" or "haos" (haos imports the HAOS qcow2 image
+#                 fresh: UEFI/OVMF, EFI disk, no cloud-init - not a template clone)
 #   target        node: "pve1" (amd64) or "pve2" (arm64)
 #   vlan_id       VLAN ID; gateway/nameserver/search-domain resolve from the
 #                 vlans registry in modules/cluster-data
@@ -19,7 +20,12 @@
 #                 "local-usbssd" (external USB SSD); omit = node default.
 #                 VM clones inherit their disk from the template, so this only
 #                 moves the VM's cloud-init drive - pick the datastore when
-#                 building the VM template instead.
+#                 building the VM template instead. For type "haos" the disk is
+#                 created at deploy time (image import), so this DOES matter.
+#   extra_networks additional link-only LXC NICs (eth1..N, no IP): each
+#                 { vlan_id, firewall? }. Used e.g. by the mDNS reflector to
+#                 receive multicast on multiple VLANs without addresses.
+#                 "lxc" only; omit = eth0 only.
 #   on_boot       start at host boot (default true)
 #   startup       startup/shutdown order & delays: { order, up_delay?, down_delay? }
 #                 (omit = left unset)
@@ -129,6 +135,47 @@ locals {
       role           = "unifi"
       backup         = "tier-1"
       description    = "UniFi OS Server - Network controller for UniFi gear (Managed by Terraform)"
+    }
+    avahi01 = {
+      type           = "lxc"
+      target         = "pve1"
+      vlan_id        = 90
+      template_vmid  = 9000
+      vmid           = 203
+      cores          = 1
+      memory         = 256
+      disk_size      = 8
+      disk_datastore = "local-ssd"
+      ip             = "192.168.90.44/24"
+      on_boot        = true
+      startup        = { order = 25, up_delay = 15, down_delay = 45 }
+      role           = "avahi"
+      backup         = "tier-3"
+      # Link-only NICs (no IP): receive/reflect mDNS on each VLAN. firewall is
+      # off on these so the deny-by-default guest firewall can't drop multicast.
+      extra_networks = [
+        { vlan_id = 100, firewall = false },
+        { vlan_id = 120, firewall = false },
+        { vlan_id = 122, firewall = false },
+        { vlan_id = 132, firewall = false },
+        { vlan_id = 150, firewall = false },
+        { vlan_id = 152, firewall = false },
+      ]
+      description = "mDNS reflector (avahi) - bridges service discovery across VLANs (Managed by Terraform)"
+    }
+    haos01 = {
+      type        = "haos"
+      target      = "pve1"
+      vlan_id     = 100
+      vmid        = 101
+      cores       = 2
+      memory      = 4096
+      disk_size   = 32
+      ip          = "192.168.100.40/24"
+      on_boot     = true
+      startup     = { order = 40, up_delay = 10, down_delay = 180 }
+      backup      = "tier-2"
+      description = "Home Assistant OS - smart home hub (Managed by Terraform)"
     }
     # web1 = {
     #   type          = "lxc"

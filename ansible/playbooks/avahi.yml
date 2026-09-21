@@ -1,0 +1,6 @@
+---
+- name: Deploy mDNS reflector (avahi)
+  hosts: all
+  become: true
+  roles:
+    - role: avahi

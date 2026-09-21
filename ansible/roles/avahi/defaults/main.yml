@@ -1,0 +1,21 @@
+# mDNS reflector role defaults.
+#
+# avahi-daemon in reflector mode copies mDNS queries/responses between the
+# listed interfaces, so services (Chromecast, Nest speakers, Matter, printers)
+# are discoverable across VLANs. The role is deployed on a multi-NIC LXC where
+# eth0 carries a management IP (e.g. VLAN 90) and the remaining NICs are
+# link-only (no IP) - one per VLAN to reflect.
+
+# Interfaces to reflect mDNS between (must match the container's NICs).
+avahi_reflect_interfaces:
+  - eth0
+  - eth1
+  - eth2
+  - eth3
+  - eth4
+  - eth5
+  - eth6
+
+# Reflect IPv6 <-> IPv4 traffic too. Usually not recommended; mDNS here is
+# IPv4-only (use-ipv6=no in the server section), so keep this off.
+avahi_reflect_ipv6: false

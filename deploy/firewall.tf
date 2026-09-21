@@ -32,9 +32,13 @@ locals {
   # guest 142 uses the router's DNS). Rendered into a cluster-level ipset
   # (proxmox_virtual_environment_firewall_ipset.adguard_dns_sources) and used
   # as the source of the adguard port-53 rules, so DNS is restricted per node
-  # as well as on the MikroTik.
-  adguard_dns_vlans   = [37, 70, 75, 80, 90, 95, 100, 115, 120, 122, 132, 150, 152, 160]
-  adguard_dns_sources = [for id in local.adguard_dns_vlans : module.cluster.vlans[id]]
+  # as well as on the MikroTik. WireGuard clients are included so roaming
+  # devices can resolve internal names.
+  adguard_dns_vlans = [37, 70, 75, 80, 90, 95, 100, 115, 120, 122, 132, 150, 152, 160]
+  adguard_dns_sources = concat(
+    [for id in local.adguard_dns_vlans : module.cluster.vlans[id]],
+    local.firewall_wg_client_cidrs,
+  )
 
   # VLANs hosting UniFi managed devices (switches/APs), which must reach the
   # UniFi OS Server for inform/adoption/STUN/discovery. Rendered into the
@@ -42,6 +46,30 @@ locals {
   # gear here (device VLANs only - client VLANs never talk to the controller).
   unifi_device_vlans   = [37]
   unifi_device_sources = [for id in local.unifi_device_vlans : module.cluster.vlans[id]]
+
+  # Human-facing Home Assistant UI (web dashboard). Management VLANs only -
+  # IoT devices don't get the dashboard. Rendered into 'haos-ui-sources'.
+  firewall_haos_ui_vlans   = [120, 122, 132]
+  firewall_haos_ui_sources = [for id in local.firewall_haos_ui_vlans : module.cluster.vlans[id]]
+
+  # IoT VLANs that HAOS integrates with (MQTT broker, Matter server, zigbee2mqtt,
+  # Chromecast/Nest on 150/152). Inbound mDNS/SSDP/Matter/cast replies plus MQTT.
+  # Rendered into 'haos-iot-sources'.
+  firewall_haos_iot_vlans   = [150, 152]
+  firewall_haos_iot_sources = [for id in local.firewall_haos_iot_vlans : module.cluster.vlans[id]]
+
+  # WireGuard overlay (interface wg-home, 172.18.10.0/24). All peers may reach
+  # the HAOS UI (presence/proximity); wg-darth-sidious (172.18.10.26, private
+  # phone) and wg-laptop (172.18.10.37) may also reach the other admin services
+  # (UniFi controller, ...). Rendered into the cluster-level ipsets
+  # 'wg-sources' / 'wg-admin'.
+  firewall_wg_client_cidrs = [
+    { subnet = "172.18.10.0/24", name = "WireGuard clients (wg-home)" },
+  ]
+  firewall_wg_admin_cidrs = [
+    { subnet = "172.18.10.26", name = "wg-darth-sidious (private phone)" },
+    { subnet = "172.18.10.37", name = "wg-laptop" },
+  ]
 
   firewall_rules = {
     adguard = [
@@ -69,6 +97,9 @@ locals {
       # UniFi OS Server: admin UI on 11443 (web console) from mgmt VLANs.
       { type = "in", action = "ACCEPT", proto = "tcp", dport = "11443",
       source = "+mgmt-sources", comment = "Admin UI (mgmt)" },
+      # UniFi OS Server: admin UI from the private phone over WireGuard.
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "11443",
+      source = "+wg-admin", comment = "Admin UI (WireGuard phone)" },
       # Device adoption/inform + STUN + discovery from the UniFi device VLAN(s).
       { type = "in", action = "ACCEPT", proto = "tcp", dport = "8080",
       source = "+unifi-device-sources", comment = "Device inform (UniFi devices)" },
@@ -80,6 +111,38 @@ locals {
       source = "+unifi-device-sources", comment = "Device discovery (UniFi devices)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
-    # haos: add when a Home Assistant host is deployed (e.g. tcp 80/443/8123 from mgmt).
+    avahi = [
+      # mDNS reflector: receives/reflects mDNS on eth0 (VLAN 90). The extra
+      # link-only NICs (VLANs 100/150/152/120/122/132) are firewall=false (a
+      # deny-by-default guest firewall drops multicast), so only eth0 is filtered.
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "5353",
+      comment = "mDNS (reflector)" },
+      { type = "in", action = "DROP", comment = "Deny other inbound" },
+    ]
+    haos = [
+      # Home Assistant UI (web dashboard) from the management VLANs only.
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "8123",
+      source = "+haos-ui-sources", comment = "Home Assistant UI (mgmt)" },
+      # Home Assistant UI from the WireGuard overlay (all peers, presence/proximity).
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "8123",
+      source = "+wg-sources", comment = "Home Assistant UI (WireGuard)" },
+      # IoT integrations from the IoT VLANs (MQTT/Matter/zigbee2mqtt, Chromecast
+      # and Nest on 150/152). Egress stays ACCEPT so HAOS reaches them too;
+      # these cover the new-inbound direction (mDNS replies, cast control,
+      # Matter). Established reply traffic is allowed by PVE automatically.
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "5353",
+      source = "+haos-iot-sources", comment = "mDNS/Chromecast discovery (IoT 150/152)" },
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "1883,8883",
+      source = "+haos-iot-sources", comment = "MQTT (IoT 150/152)" },
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "5540",
+      source = "+haos-iot-sources", comment = "Matter operational (IoT 150/152)" },
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "5540",
+      source = "+haos-iot-sources", comment = "Matter commissioning (IoT 150/152)" },
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "8008,8009,8443",
+      source = "+haos-iot-sources", comment = "Chromecast control (IoT 150/152)" },
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "1900",
+      source = "+haos-iot-sources", comment = "SSDP (IoT 150/152)" },
+      { type = "in", action = "DROP", comment = "Deny other inbound" },
+    ]
   }
 }

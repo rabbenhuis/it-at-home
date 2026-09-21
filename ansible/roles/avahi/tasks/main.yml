@@ -1,0 +1,29 @@
+---
+# mDNS reflector across VLANs. True reflection (not just announcing): avahi
+# copies mDNS packets between the interfaces listed in allow-interfaces.
+#
+# IMPORTANT: the reflector keys live under [reflector], NOT [server]. avahi
+# treats an unknown key in a section as FATAL (logs "Invalid configuration key"
+# and exits 255), so a config written with enable-reflector under [server]
+# silently never starts. The template keeps them in the right section.
+- name: Install avahi-daemon
+  ansible.builtin.apt:
+    name: avahi-daemon
+    state: present
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Deploy avahi-daemon config (reflector)
+  ansible.builtin.template:
+    src: avahi-daemon.conf.j2
+    dest: /etc/avahi/avahi-daemon.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart avahi-daemon
+
+- name: Enable and start avahi-daemon
+  ansible.builtin.systemd:
+    name: avahi-daemon
+    enabled: true
+    state: started

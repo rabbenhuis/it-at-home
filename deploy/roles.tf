@@ -7,6 +7,7 @@ locals {
   roles = {
     adguard = "adguard.yml"
     unbound = "unbound.yml"
+    avahi   = "avahi.yml"
     haos    = "haos.yml"
     harden  = "harden.yml"
     unifi   = "unifi.yml"

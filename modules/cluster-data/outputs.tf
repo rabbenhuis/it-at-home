@@ -16,6 +16,7 @@ output "nodes" {
       gateway         = "192.168.70.1"
       lxc_ostemplate  = "nas:vztmpl/debian-13-standard_13.6-1_amd64.tar.zst"
       vm_cloudimage   = "nas:import/debian-13-genericcloud-amd64.qcow2"
+      haos_image      = "nas:import/haos_ova-18.2.qcow2"
       ip = {
         native = "192.168.70.90/24"
         podman = "192.168.70.91/24"
@@ -45,6 +46,8 @@ output "nodes" {
       #     https://cloud.debian.org/images/cloud/trixie/latest/debian-13-genericcloud-arm64.qcow2
       lxc_ostemplate = "nas:vztmpl/debian-13-standard_13.6-1_arm64.tar.zst"
       vm_cloudimage  = "nas:import/debian-13-genericcloud-arm64.qcow2"
+      # HAOS on arm64/QEMU is not officially supported; placeholder for now.
+      haos_image = "nas:import/haos_generic-aarch64-18.2.qcow2"
       ip = {
         native = "192.168.70.90/24"
         podman = "192.168.70.91/24"
