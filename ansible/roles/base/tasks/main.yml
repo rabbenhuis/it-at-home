@@ -54,6 +54,33 @@
     owner: root
     group: root
 
+# First-boot provisioning files are written EARLY (right after the base
+# packages) so they survive template builds whose ansible run gets interrupted
+# near the end - a dropped SSH connection during the role's tail tasks can leave
+# the last-written files 0 bytes. firstboot.sh regenerates machine-id, SSH host
+# keys, the netplan IPv4-only override and the aide/rkhunter baselines on every
+# clone, so these two files are the ones that MUST always be intact.
+- name: Install first-boot provisioning script
+  ansible.builtin.template:
+    src: firstboot.sh.j2
+    dest: /usr/local/bin/firstboot.sh
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Install first-boot provisioning unit
+  ansible.builtin.template:
+    src: firstboot.service.j2
+    dest: /etc/systemd/system/firstboot.service
+    mode: "0644"
+    owner: root
+    group: root
+
+- name: Enable first-boot provisioning unit
+  ansible.builtin.systemd:
+    name: firstboot
+    enabled: true
+
 - name: Apply sysctl hardening
   ansible.builtin.template:
     src: sysctl-99-hardening.conf.j2
@@ -366,27 +393,6 @@
     mode: "0644"
     owner: root
     group: root
-
-- name: Install first-boot provisioning script
-  ansible.builtin.template:
-    src: firstboot.sh.j2
-    dest: /usr/local/bin/firstboot.sh
-    mode: "0700"
-    owner: root
-    group: root
-
-- name: Install first-boot provisioning unit
-  ansible.builtin.template:
-    src: firstboot.service.j2
-    dest: /etc/systemd/system/firstboot.service
-    mode: "0644"
-    owner: root
-    group: root
-
-- name: Enable first-boot provisioning unit
-  ansible.builtin.systemd:
-    name: firstboot
-    enabled: true
 
 - name: Clean apt caches and remove obsolete packages
   ansible.builtin.apt:

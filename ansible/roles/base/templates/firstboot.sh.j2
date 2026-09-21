@@ -34,7 +34,8 @@ fi
 # so the static IPv4 never applies. The vm role writes it at template build;
 # this is a safety net in case a clone's copy is missing/stale (e.g. a build
 # that was interrupted). Guarded by netplan being present (LXC templates use
-# PVE networking, not netplan).
+# PVE networking, not netplan). Restart networkd (not just `netplan apply`)
+# because the interface may already be stuck in the failed state at this point.
 if command -v netplan >/dev/null 2>&1; then
   cat > /etc/netplan/99-ipv4-only.yaml <<'EOF'
 network:
@@ -46,7 +47,9 @@ network:
       dhcp6: false
 EOF
   chmod 600 /etc/netplan/99-ipv4-only.yaml
-  netplan apply >/dev/null 2>&1 || true
+  netplan generate >/dev/null 2>&1 || true
+  systemctl restart systemd-networkd >/dev/null 2>&1 || true
+  sleep 2
 fi
 
 touch /var/lib/firstboot.done

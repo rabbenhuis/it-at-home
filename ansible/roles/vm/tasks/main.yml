@@ -7,6 +7,8 @@
 # link-local). netplan apply/reconfigure works around it, but it recurs on
 # every boot. Disable IPv6 RA + link-local + DHCPv6 on eth0 via a netplan
 # override that merges with the cloud-init-generated config on every clone.
+# If this file is ever truncated during a template build, firstboot.sh (written
+# early in the base role) regenerates it at clone first boot.
 - name: Disable IPv6 RA/DHCPv6 on eth0 (boot-time networkd failure fix)
   ansible.builtin.copy:
     dest: /etc/netplan/99-ipv4-only.yaml
