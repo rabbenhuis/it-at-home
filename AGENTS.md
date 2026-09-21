@@ -11,7 +11,7 @@ Proxmox template build pipeline (Terraform `bpg/proxmox` + Ansible). Builds vers
 
 ## One-shot build
 
-`./scripts/build-template.sh <role> <version> <vmid> [target]` runs: `terraform apply` (`target=pve1|pve2` selects endpoint/node/arch/storage/images) → SSH-wait (~10 min, covers clone firstboot/aideinit and VM cloud-init) → `ansible-playbook` → stop → convert to template (API `POST /lxc/<vmid>/template`, VM uses `/qemu/`) → rename (API `PUT .../config`; `hostname=` for LXC, `name=` for VM) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
+`./scripts/build-template.sh <role> <version> <vmid> [target]` runs: `terraform apply` (`target=pve1|pve2` selects endpoint/node/arch/storage/images) → SSH-wait (~10 min, covers clone firstboot/aideinit and VM cloud-init) → `ansible-playbook` → verify template-critical files are non-empty (self-heals with one re-run if a build-time SSH hiccup truncated any) → stop → convert to template (API `POST /lxc/<vmid>/template`, VM uses `/qemu/`) → rename (API `PUT .../config`; `hostname=` for LXC, `name=` for VM) → `terraform state rm`. Re-running after a partial failure is safe (idempotent).
 
 Per-node settings (endpoint, node name, architecture, disk/image datastores, bridge, VLAN, IPs, image file ids) live in the `nodes` output of `modules/cluster-data/outputs.tf` (shared with the deploy config). Base images are **static references** (not downloaded by Terraform) — provision each node's `nas` once; the pve2 (arm64) filenames are placeholders to confirm via `pveam available | grep arm64`.
 

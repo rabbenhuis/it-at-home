@@ -194,7 +194,7 @@ module "template_vm" {
   gateway             = local.node.gateway
   ssh_keys            = module.cluster.ssh_keys
   cores               = 2
-  memory              = 2048
+  memory              = 4096
   disk_size           = 20
   disk_datastore      = local.node.disk_datastore
   bridge              = local.node.bridge

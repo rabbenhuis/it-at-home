@@ -97,20 +97,41 @@ fi
 
 # Guard against a build whose ansible run was interrupted partway (e.g. a
 # dropped SSH connection truncating in-flight file transfers to 0 bytes). A
-# broken template silently produces broken clones, so fail loudly here.
-log "Verifying template-critical files are non-empty on $IP"
-MISSING=""
-for f in /usr/local/bin/firstboot.sh /etc/systemd/system/firstboot.service; do
-  if [[ "$(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=4 "$ANSIBLE_USER@$IP" "stat -c %s $f 2>/dev/null || echo 0")" == "0" ]]; then
-    MISSING="$MISSING $f"
+# broken template silently produces broken clones, so verify the template-
+# critical files are non-empty; the roles are idempotent, so if any came out
+# empty, re-run the playbook to heal them before converting.
+
+# Verify the given files are all non-empty (size > 0) on the build host.
+check_template_files() {
+  local missing=""
+  for f in "$@"; do
+    local sz
+    sz="$(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=4 "$ANSIBLE_USER@$IP" "stat -c %s $f 2>/dev/null || echo 0")"
+    if [[ "$sz" == "0" ]]; then
+      missing="$missing $f"
+    fi
+  done
+  if [[ -n "$missing" ]]; then
+    echo "$missing"
+    return 1
   fi
-done
-if [[ "$ROLE" == "vm" ]] && [[ "$(timeout 10 ssh -o BatchMode=yes -o ConnectTimeout=4 "$ANSIBLE_USER@$IP" "stat -c %s /etc/netplan/99-ipv4-only.yaml 2>/dev/null || echo 0")" == "0" ]]; then
-  MISSING="$MISSING /etc/netplan/99-ipv4-only.yaml"
+  return 0
+}
+
+log "Verifying template-critical files are non-empty on $IP"
+CRITICAL_FILES=("/usr/local/bin/firstboot.sh" "/etc/systemd/system/firstboot.service")
+if [[ "$ROLE" == "vm" ]]; then
+  CRITICAL_FILES+=("/etc/netplan/99-ipv4-only.yaml")
+fi
+MISSING="$(check_template_files "${CRITICAL_FILES[@]}")"
+if [[ -n "$MISSING" ]]; then
+  log "0-byte files detected ($MISSING), re-running ansible to heal (build was likely interrupted)"
+  ~/.local/bin/ansible-playbook -i "${IP}," -u "$ANSIBLE_USER" -b "$PLAY"
+  MISSING="$(check_template_files "${CRITICAL_FILES[@]}")"
 fi
 if [[ -n "$MISSING" ]]; then
-  echo "ERROR: template build left 0-byte files ($MISSING) - ansible run was likely interrupted" >&2
-  echo "Fix the SSH/ansible issue (check MaxSessions/AllowUsers) and rebuild the template" >&2
+  echo "ERROR: template build still has 0-byte files ($MISSING) after re-run - build is unreliable" >&2
+  echo "Fix the SSH/ansible issue (check MaxSessions/AllowUsers/build VM resources) and rebuild" >&2
   exit 1
 fi
 log "Template-critical files OK"
