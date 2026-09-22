@@ -238,11 +238,15 @@ resource "proxmox_virtual_environment_vm" "haos" {
     }
   }
 
-  # EFI disk required by OVMF; type "4m".
+  # EFI disk required by OVMF; type "4m". pre_enrolled_keys must be OFF for
+  # HAOS: enrolling the MS keys enables Secure Boot, and HAOS boots an unsigned
+  # systemd-boot/kernel, so OVMF rejects the boot entry ("Access Denied ...
+  # rejected probably by secure boot"). The Debian VM template keeps keys
+  # (Debian ships a signed shim); HAOS does not.
   efi_disk {
     datastore_id      = var.disk_datastore
     type              = "4m"
-    pre_enrolled_keys = true
+    pre_enrolled_keys = false
   }
 
   # scsi0 = the imported HAOS qcow2, grown to the requested size.
