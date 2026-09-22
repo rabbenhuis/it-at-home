@@ -1,0 +1,32 @@
+# Managed by Terraform/Ansible (role: postfix)
+#
+# Internal mail relay: accepts SMTP on 25 from the internal networks and
+# forwards everything to the smart host with SASL auth + STARTTLS.
+
+# Host identity
+myhostname = {{ postfix_myhostname }}
+myorigin = {{ postfix_myorigin }}
+mydestination = localhost.localdomain, localhost
+append_dot_mydomain = no
+
+# Listen on all interfaces for the internal relay clients.
+inet_interfaces = all
+
+# Relay clients: only the internal networks (relay is not open).
+mynetworks = {{ postfix_mynetworks | join(' ') }}
+
+# Outbound: everything goes to the smart host.
+relayhost = {{ postfix_relay_host }}
+
+# SASL auth to the smart host.
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+smtp_tls_security_level = {{ postfix_smtp_tls_security_level }}
+smtp_tls_CAfile = /etc/ssl/certs/ca-certificates.crt
+
+# Inbound: only the relay networks may deliver; everything else rejected.
+smtpd_relay_restrictions = permit_mynetworks, reject_unauth_destination
+smtpd_recipient_restrictions = permit_mynetworks, reject_unauth_destination
+
+compatibility_level = 3.6

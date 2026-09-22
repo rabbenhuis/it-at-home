@@ -1,0 +1,54 @@
+---
+# Postfix mail relay. Installs postfix (the base role purges it on template
+# builds) and configures it to forward all mail to the smart host with SASL
+# auth. The smtp_smtp_user/password come from bws at deploy time (never committed).
+- name: Preseed postfix debconf selections (noninteractive install)
+  ansible.builtin.shell: |
+    echo "postfix postfix/main_mailer_type select Internet Site" | debconf-set-selections
+    echo "postfix postfix/mailname string {{ postfix_myhostname }}" | debconf-set-selections
+  changed_when: false
+
+- name: Install postfix
+  ansible.builtin.apt:
+    name:
+      - postfix
+      # Cyrus SASL mechanism modules (PLAIN/LOGIN) for the smarthost auth;
+      # libsasl2-modules-db alone gives "no mechanism available" on the smtp client.
+      - libsasl2-modules
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Deploy postfix main.cf
+  ansible.builtin.template:
+    src: main.cf.j2
+    dest: /etc/postfix/main.cf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart postfix
+
+- name: Deploy postfix SASL credentials
+  ansible.builtin.template:
+    src: sasl_passwd.j2
+    dest: /etc/postfix/sasl_passwd
+    mode: "0600"
+    owner: root
+    group: root
+  notify: restart postfix
+
+- name: Build SASL password hash table
+  ansible.builtin.command: postmap /etc/postfix/sasl_passwd
+  changed_when: false
+
+- name: Validate postfix configuration
+  ansible.builtin.command: postfix check
+  changed_when: false
+
+- name: Enable and start postfix
+  ansible.builtin.systemd:
+    name: postfix
+    enabled: true
+    state: started
+    daemon_reload: true

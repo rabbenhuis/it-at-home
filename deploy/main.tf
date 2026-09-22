@@ -70,6 +70,8 @@ module "deploy_pve1" {
     proxmox_virtual_environment_firewall_ipset.haos_iot_sources,
     proxmox_virtual_environment_firewall_ipset.wg_sources,
     proxmox_virtual_environment_firewall_ipset.wg_admin,
+    proxmox_virtual_environment_firewall_ipset.ntp_sources,
+    proxmox_virtual_environment_firewall_ipset.mail_relay_sources,
   ]
 
   for_each = local.pve1_hosts
@@ -102,8 +104,10 @@ module "deploy_pve1" {
   vlan_id        = each.value.vlan_id
   extra_networks = try(each.value.extra_networks, [])
   haos_image     = module.cluster.nodes.pve1.haos_image
+  # Firewall rule set key: `firewall_role` if set, else `role`. A host like
+  # haos01 (no ansible provisioning) can get a ruleset without a `role`.
   firewall       = true
-  firewall_rules = length(try(local.firewall_rules[each.value.role], [])) > 0 ? concat(local.firewall_mgmt_base, local.firewall_rules[each.value.role]) : []
+  firewall_rules = length(try(local.firewall_rules[try(each.value.firewall_role, each.value.role)], [])) > 0 ? concat(local.firewall_mgmt_base, local.firewall_rules[try(each.value.firewall_role, each.value.role)]) : []
   description    = try(each.value.description, "Managed by Terraform (deployed from template vmid ${each.value.template_vmid})")
 }
 

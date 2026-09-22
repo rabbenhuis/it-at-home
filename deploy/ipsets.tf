@@ -136,3 +136,37 @@ resource "proxmox_virtual_environment_firewall_ipset" "wg_admin" {
     }
   }
 }
+
+# Server VLANs allowed to sync NTP from the infra-core time server.
+# Referenced from the infra-core role's rule as source "+ntp-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "ntp_sources" {
+  provider = proxmox.pve1
+
+  name    = "ntp-sources"
+  comment = "Server VLANs allowed to sync NTP from infra-core01"
+
+  dynamic "cidr" {
+    for_each = local.firewall_ntp_sources
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}
+
+# Internal hosts allowed to relay mail through the infra-core postfix relay.
+# Referenced from the infra-core role's rule as source "+mail-relay-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "mail_relay_sources" {
+  provider = proxmox.pve1
+
+  name    = "mail-relay-sources"
+  comment = "Internal hosts allowed to relay mail via the infra-core postfix relay"
+
+  dynamic "cidr" {
+    for_each = local.firewall_mail_relay_sources
+    content {
+      name    = cidr.value.subnet
+      comment = cidr.value.name
+    }
+  }
+}

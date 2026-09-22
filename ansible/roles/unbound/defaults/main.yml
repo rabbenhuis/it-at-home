@@ -33,7 +33,7 @@ unbound_auth_zones:
     for_upstream: yes
 
 # SOA serial for the per-view auth-zone zonefiles. Bump when records change.
-unbound_auth_zone_serial: 2026092101
+unbound_auth_zone_serial: 2026092202
 
 # TTL for the auth-zone records and SOA minimum.
 unbound_auth_zone_ttl: 300
@@ -50,7 +50,8 @@ unbound_records_full:
   - { type: "A", name: "unifi01.mgmt.abbenhuis.internal", value: "192.168.37.40" }
   - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
   - { type: "A", name: "bm-pve-prd-01.abbenhuis.internal", value: "192.168.70.64" }
-  - { type: "A", name: "mta.abbenhuis.internal", value: "192.168.100.66" }
+  - { type: "CNAME", name: "mta.abbenhuis.internal", value: "infra-core01.infra.abbenhuis.internal" }
+  - { type: "CNAME", name: "ntp.abbenhuis.internal", value: "infra-core01.infra.abbenhuis.internal" }
   - { type: "A", name: "home-assistant.abbenhuis.internal", value: "192.168.100.70" }
   - { type: "A", name: "mqtt.abbenhuis.internal", value: "192.168.100.71" }
   - { type: "A", name: "matter-server.abbenhuis.internal", value: "192.168.100.72" }
@@ -66,6 +67,7 @@ unbound_records_full:
   - { type: "A", name: "adguard-sec01.infra.abbenhuis.internal", value: "192.168.90.42" }
   - { type: "A", name: "unbound-sec01.infra.abbenhuis.internal", value: "192.168.90.43" }
   - { type: "A", name: "avahi01.infra.abbenhuis.internal", value: "192.168.90.44" }
+  - { type: "A", name: "infra-core01.infra.abbenhuis.internal", value: "192.168.90.45" }
   - { type: "A", name: "haos01.apps.abbenhuis.internal", value: "192.168.100.40" }
   - { type: "CNAME", name: "nas.abbenhuis.internal", value: "qnap01.abbenhuis.internal" }
   - { type: "CNAME", name: "file-server.abbenhuis.internal", value: "qnap01.abbenhuis.internal" }
@@ -78,6 +80,7 @@ unbound_ptr_full:
   - { ip: "192.168.90.42", name: "adguard-sec01.infra.abbenhuis.internal" }
   - { ip: "192.168.90.43", name: "unbound-sec01.infra.abbenhuis.internal" }
   - { ip: "192.168.90.44", name: "avahi01.infra.abbenhuis.internal" }
+  - { ip: "192.168.90.45", name: "infra-core01.infra.abbenhuis.internal" }
   - { ip: "192.168.100.40", name: "haos01.apps.abbenhuis.internal" }
   - { ip: "192.168.100.50", name: "qnap01.abbenhuis.internal" }
 
@@ -87,6 +90,7 @@ unbound_records_limited:
   - { type: "A", name: "home-assistant.abbenhuis.internal", value: "192.168.100.70" }
   - { type: "A", name: "haos01.apps.abbenhuis.internal", value: "192.168.100.40" }
   - { type: "A", name: "avahi01.infra.abbenhuis.internal", value: "192.168.90.44" }
+  - { type: "A", name: "infra-core01.infra.abbenhuis.internal", value: "192.168.90.45" }
   - { type: "A", name: "qnap01.abbenhuis.internal", value: "192.168.100.50" }
   - { type: "A", name: "printer.iot.abbenhuis.internal", value: "192.168.152.45" }
   - { type: "A", name: "scanner.iot.abbenhuis.internal", value: "192.168.152.46" }
@@ -112,6 +116,7 @@ unbound_ptr_limited:
   - { ip: "192.168.90.42", name: "adguard-sec01.infra.abbenhuis.internal" }
   - { ip: "192.168.90.43", name: "unbound-sec01.infra.abbenhuis.internal" }
   - { ip: "192.168.90.44", name: "avahi01.infra.abbenhuis.internal" }
+  - { ip: "192.168.90.45", name: "infra-core01.infra.abbenhuis.internal" }
   - { ip: "192.168.100.40", name: "haos01.apps.abbenhuis.internal" }
   - { ip: "192.168.100.50", name: "qnap01.abbenhuis.internal" }
 
@@ -155,6 +160,8 @@ unbound_local_ptrs:
         name: "unbound-sec01.infra.abbenhuis.internal"
       - ip: "192.168.90.44"
         name: "avahi01.infra.abbenhuis.internal"
+      - ip: "192.168.90.45"
+        name: "infra-core01.infra.abbenhuis.internal"
   - vlan: 100
     records:
       - ip: "192.168.100.40"

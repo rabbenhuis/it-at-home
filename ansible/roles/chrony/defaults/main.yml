@@ -1,0 +1,17 @@
+# Chrony NTP server role defaults.
+# Upstream time sources this host syncs from (chrony is both client + server).
+chrony_sources:
+  - "pool 2.debian.pool.ntp.org iburst"
+
+# Networks allowed to query this time server. Kept in sync with
+# firewall_ntp_vlans in deploy/firewall.tf (server VLANs only).
+chrony_allow:
+  - "192.168.37.0/24"
+  - "192.168.70.0/24"
+  - "192.168.75.0/24"
+  - "192.168.80.0/24"
+  - "192.168.90.0/24"
+  - "192.168.95.0/24"
+  - "192.168.100.0/24"
+  - "192.168.115.0/24"
+  - "192.168.150.0/24"

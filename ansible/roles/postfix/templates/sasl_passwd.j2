@@ -1,0 +1,3 @@
+# Managed by Terraform/Ansible (role: postfix)
+# SMTP AUTH credentials for the smart host. Root-only; run postmap after edits.
+{{ postfix_relay_host }} {{ postfix_smtp_user }}:{{ postfix_smtp_password }}

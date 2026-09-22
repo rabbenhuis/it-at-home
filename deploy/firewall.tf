@@ -71,6 +71,19 @@ locals {
     { subnet = "172.18.10.37", name = "wg-laptop" },
   ]
 
+  # Server VLANs allowed to sync NTP from the infra-core time server
+  # (192.168.90.45). Client VLANs excluded. Rendered into 'ntp-sources'.
+  firewall_ntp_vlans   = [37, 70, 75, 80, 90, 95, 100, 115, 150]
+  firewall_ntp_sources = [for id in local.firewall_ntp_vlans : module.cluster.vlans[id]]
+
+  # Internal hosts allowed to relay mail through the infra-core postfix relay.
+  # Every VLAN subnet except the guest WLAN (142 must not relay) plus the
+  # WireGuard overlay. Rendered into 'mail-relay-sources'.
+  firewall_mail_relay_sources = concat(
+    [for id, v in module.cluster.vlans : v if id != 142],
+    local.firewall_wg_client_cidrs,
+  )
+
   firewall_rules = {
     adguard = [
       # Environment-wide DNS server: 53 open to the AdGuard-served VLANs only.
@@ -119,12 +132,22 @@ locals {
       comment = "mDNS (reflector)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
+    infra-core = [
+      # NTP time server: UDP 123 from the server VLANs only.
+      { type = "in", action = "ACCEPT", proto = "udp", dport = "123",
+      source = "+ntp-sources", comment = "NTP (server VLANs)" },
+      # Postfix relay: accepts SMTP on 25 from the internal networks.
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "25",
+      source = "+mail-relay-sources", comment = "SMTP relay (internal)" },
+      { type = "in", action = "DROP", comment = "Deny other inbound" },
+    ]
     haos = [
-      # Home Assistant UI (web dashboard) from the management VLANs only.
-      { type = "in", action = "ACCEPT", proto = "tcp", dport = "8123",
+      # Home Assistant UI (web dashboard) from the management VLANs only. HAOS
+      # serves the dashboard via its supervisor ingress on 80/443, not 8123.
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "80,443",
       source = "+haos-ui-sources", comment = "Home Assistant UI (mgmt)" },
       # Home Assistant UI from the WireGuard overlay (all peers, presence/proximity).
-      { type = "in", action = "ACCEPT", proto = "tcp", dport = "8123",
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "80,443",
       source = "+wg-sources", comment = "Home Assistant UI (WireGuard)" },
       # IoT integrations from the IoT VLANs (MQTT/Matter/zigbee2mqtt, Chromecast
       # and Nest on 150/152). Egress stays ACCEPT so HAOS reaches them too;

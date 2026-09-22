@@ -34,6 +34,9 @@
 #   role          service role to apply post-deploy, mapped to an ansible playbook
 #                 in deploy/roles.tf (e.g. "adguard", "unbound", "haos", "harden");
 #                 omit = skip
+#   firewall_role firewall ruleset key in deploy/firewall.tf when it differs from
+#                 `role` (e.g. "haos" on haos01, which has no ansible provisioning);
+#                 omit = use `role`
 #   backup        backup tier from deploy/backup.tf ("tier-0".."tier-3"); hosts in
 #                 the same tier share one backup job. omit = not backed up
 #   description   free-form note shown in the Proxmox container/VM notes field
@@ -138,6 +141,23 @@ locals {
       backup         = "tier-1"
       description    = "UniFi OS Server - Network controller for UniFi gear (Managed by Terraform)"
     }
+    infra-core01 = {
+      type           = "lxc"
+      target         = "pve1"
+      vlan_id        = 90
+      template_vmid  = 9000
+      vmid           = 204
+      cores          = 1
+      memory         = 512
+      disk_size      = 16
+      disk_datastore = "local-ssd"
+      ip             = "192.168.90.45/24"
+      on_boot        = true
+      startup        = { order = 20, up_delay = 15, down_delay = 60 }
+      unprivileged   = true
+      role           = "infra-core"
+      description    = "NTP time server + postfix relay (replaces Pi docker relay) (Managed by Terraform)"
+    }
     avahi01 = {
       type           = "lxc"
       target         = "pve1"
@@ -173,13 +193,14 @@ locals {
       cores   = 2
       # TEMP: 3 GB while the Pi workloads are being migrated to pve1; bump back
       # to 4096 once pve2 is up and some workloads move to the Pi.
-      memory      = 3072
-      disk_size   = 32
-      ip          = "192.168.100.40/24"
-      on_boot     = true
-      startup     = { order = 40, up_delay = 10, down_delay = 180 }
-      backup      = "tier-2"
-      description = "Home Assistant OS - smart home hub (Managed by Terraform)"
+      memory        = 3072
+      disk_size     = 32
+      ip            = "192.168.100.40/24"
+      on_boot       = true
+      startup       = { order = 40, up_delay = 10, down_delay = 180 }
+      firewall_role = "haos"
+      backup        = "tier-2"
+      description   = "Home Assistant OS - smart home hub (Managed by Terraform)"
     }
     # web1 = {
     #   type          = "lxc"

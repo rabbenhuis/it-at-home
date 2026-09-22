@@ -1,0 +1,7 @@
+---
+- name: Deploy infra core (NTP time server + postfix relay)
+  hosts: all
+  become: true
+  roles:
+    - role: chrony
+    - role: postfix

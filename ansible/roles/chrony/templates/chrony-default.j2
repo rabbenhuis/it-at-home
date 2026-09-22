@@ -1,0 +1,7 @@
+# Managed by Terraform/Ansible (role: chrony)
+#
+# -x: never control the system clock. This container is an unprivileged LXC:
+# it shares the PVE host clock and cannot adjust it (adjtimex is EPERM), so
+# chronyd runs as a pure NTP server. The PVE host (chrony) keeps the clock
+# correct; this container serves that time to the allowed networks.
+DAEMON_OPTS="-F 1 -x"

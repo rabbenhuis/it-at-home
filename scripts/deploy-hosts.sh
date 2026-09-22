@@ -52,6 +52,18 @@ load_pm_creds pve1
 : "${TF_VAR_pm_api_token_id:?}"
 : "${TF_VAR_pm_api_token_secret_pve1:?}"
 
+# Postfix relay SMTP credentials (infra-core role). From exported env vars or
+# Bitwarden Secrets Manager (bws); never committed. Passed to ansible as -e
+# vars for the infra-core playbook.
+POSTFIX_SMTP_USER="${POSTFIX_SMTP_USER:-}"
+POSTFIX_SMTP_PASSWORD="${POSTFIX_SMTP_PASSWORD:-}"
+if [[ -z "$POSTFIX_SMTP_USER" && -n "${BWS_ACCESS_TOKEN:-}" && -n "${BWS_PROJECT_ID:-}" ]]; then
+  POSTFIX_SMTP_USER="$(bws_value POSTFIX_SMTP_USER 2>/dev/null || true)"
+fi
+if [[ -z "$POSTFIX_SMTP_PASSWORD" && -n "${BWS_ACCESS_TOKEN:-}" && -n "${BWS_PROJECT_ID:-}" ]]; then
+  POSTFIX_SMTP_PASSWORD="$(bws_value POSTFIX_SMTP_PASSWORD 2>/dev/null || true)"
+fi
+
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 
 cd "$DEPLOY_DIR"
@@ -115,6 +127,16 @@ while IFS='|' read -r name type ip playbook; do
   [[ -z "$name" ]] && continue
   user=ansible
 
+  # The infra-core playbook (postfix relay) needs the SMTP credentials from bws.
+  POSTFIX_EXTRA_ARGS=()
+  if [[ "$playbook" == "infra-core.yml" ]]; then
+    if [[ -n "$POSTFIX_SMTP_USER" && -n "$POSTFIX_SMTP_PASSWORD" ]]; then
+      POSTFIX_EXTRA_ARGS+=(-e "postfix_smtp_user=$POSTFIX_SMTP_USER" -e "postfix_smtp_password=$POSTFIX_SMTP_PASSWORD")
+    else
+      echo "WARN: POSTFIX_SMTP_USER/PASSWORD not set (env or bws); postfix relay will render empty credentials" >&2
+    fi
+  fi
+
   log "Provisioning $name ($type, $ip) with $playbook as $user"
   ssh-keygen -R "$ip" >/dev/null 2>&1 || true
   # First boot runs firstboot.service (machine-id, SSH host keys, aideinit,
@@ -134,7 +156,7 @@ while IFS='|' read -r name type ip playbook; do
     echo "WARN: SSH to $ip did not become ready within ~15 min, skipping $name" >&2
     continue
   fi
-  (cd "$ROOT/ansible" && ~/.local/bin/ansible-playbook -i "${ip}," -u "$user" -b "playbooks/$playbook")
+  (cd "$ROOT/ansible" && ~/.local/bin/ansible-playbook -i "${ip}," -u "$user" -b "${POSTFIX_EXTRA_ARGS[@]}" "playbooks/$playbook")
 done < <(provision_plan)
 
 log "Done. Deployed hosts (see deploy/deployments.tf):"

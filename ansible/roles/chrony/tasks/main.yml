@@ -1,0 +1,48 @@
+---
+# NTP time server. chrony is both client (syncs from the upstream pool) and
+# server (serves the allowed networks). It owns the NTP port, so
+# systemd-timesyncd must be off.
+- name: Install chrony
+  ansible.builtin.apt:
+    name: chrony
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Check whether systemd-timesyncd is present
+  ansible.builtin.stat:
+    path: /lib/systemd/system/systemd-timesyncd.service
+  register: chrony_timesyncd_unit
+
+- name: Stop and disable systemd-timesyncd (chrony owns the NTP port)
+  ansible.builtin.systemd:
+    name: systemd-timesyncd
+    enabled: false
+    state: stopped
+  when: chrony_timesyncd_unit.stat.exists
+
+- name: Deploy chrony configuration
+  ansible.builtin.template:
+    src: chrony.conf.j2
+    dest: /etc/chrony/chrony.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart chrony
+
+- name: Deploy chrony daemon options (no clock control in unprivileged LXC)
+  ansible.builtin.template:
+    src: chrony-default.j2
+    dest: /etc/default/chrony
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart chrony
+
+- name: Enable and start chrony
+  ansible.builtin.systemd:
+    name: chrony
+    enabled: true
+    state: started
+    daemon_reload: true

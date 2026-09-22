@@ -5,11 +5,11 @@
 # Add new service roles here as you create their playbooks under ansible/playbooks/.
 locals {
   roles = {
-    adguard = "adguard.yml"
-    unbound = "unbound.yml"
-    avahi   = "avahi.yml"
-    haos    = "haos.yml"
-    harden  = "harden.yml"
-    unifi   = "unifi.yml"
+    adguard    = "adguard.yml"
+    unbound    = "unbound.yml"
+    avahi      = "avahi.yml"
+    harden     = "harden.yml"
+    unifi      = "unifi.yml"
+    infra-core = "infra-core.yml"
   }
 }

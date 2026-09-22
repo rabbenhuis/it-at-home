@@ -1,0 +1,24 @@
+# Postfix relay role defaults.
+#
+# External smart host (host[:port]) all mail is forwarded to with SASL auth.
+postfix_relay_host: "smtp.strato.com:587"
+
+# SMTP auth for the smart host. Set via -e at deploy time (scripts/deploy-hosts.sh
+# fetches them from bws secrets POSTFIX_SMTP_USER / POSTFIX_SMTP_PASSWORD); never
+# committed.
+postfix_smtp_user: ""
+postfix_smtp_password: ""
+
+# Sender domain for envelope-from (msmtp clients send as <hostname>@abbenhuis.net).
+postfix_myorigin: "abbenhuis.net"
+
+# EHLO/hostname for this relay.
+postfix_myhostname: "{{ ansible_facts['hostname'] }}.infra.abbenhuis.internal"
+
+# Networks allowed to relay mail through this server (relay is NOT open).
+postfix_mynetworks:
+  - "192.168.0.0/16"
+  - "172.18.10.0/24"
+
+# TLS security for outbound to the smart host: encrypt = STARTTLS required.
+postfix_smtp_tls_security_level: "encrypt"

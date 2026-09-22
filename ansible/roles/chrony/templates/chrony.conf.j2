@@ -1,0 +1,20 @@
+# Managed by Terraform/Ansible (role: chrony)
+#
+# NTP server: syncs from the upstream pool and serves time to the allowed
+# networks below. chrony evaluates allow/deny rules in order and the LAST match
+# wins, so `deny all` goes FIRST and the specific allows follow it.
+deny all
+{% for a in chrony_allow %}
+allow {{ a }}
+{% endfor %}
+
+# Upstream time sources
+{% for s in chrony_sources %}
+{{ s }}
+{% endfor %}
+
+# Drift file
+driftfile /var/lib/chrony/chrony.drift
+
+# Logging
+logdir /var/log/chrony
