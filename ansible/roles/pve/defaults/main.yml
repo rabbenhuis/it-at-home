@@ -46,6 +46,13 @@ pve_terraform_infra_privs:
   - VM.Config.Memory
   - VM.Config.CPU
   - Datastore.Audit
+  # QEMU guest agent: the bpg provider reads the VM's network interfaces from
+  # the agent (needs Audit); Unrestricted covers the full agent API the provider
+  # may use. Without these the provider logs 403 "Permission check failed"
+  # (/vms/<id>, VM.GuestAgent.Audit|VM.GuestAgent.Unrestricted) when waiting for
+  # the agent's network info.
+  - VM.GuestAgent.Audit
+  - VM.GuestAgent.Unrestricted
 
 # Older role names superseded by Terraform-Infra (PVE cannot rename roles, so
 # they are deleted once no ACL references them anymore).
