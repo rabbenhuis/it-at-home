@@ -121,13 +121,15 @@ locals {
       description   = "Secondary recursive resolver (Managed by Terraform)"
     }
     unifi01 = {
-      type           = "vm"
-      target         = "pve1"
-      vlan_id        = 37
-      template_vmid  = 9200
-      vmid           = 100
-      cores          = 2
-      memory         = 4096
+      type          = "vm"
+      target        = "pve1"
+      vlan_id       = 37
+      template_vmid = 9200
+      vmid          = 100
+      cores         = 2
+      # TEMP: 3 GB while the Pi workloads are being migrated to pve1; bump back
+      # to 4096 once pve2 is up and some workloads move to the Pi.
+      memory         = 3072
       disk_datastore = "local-usbssd"
       ip             = "192.168.37.40/24"
       on_boot        = true
@@ -164,12 +166,14 @@ locals {
       description = "mDNS reflector (avahi) - bridges service discovery across VLANs (Managed by Terraform)"
     }
     haos01 = {
-      type        = "haos"
-      target      = "pve1"
-      vlan_id     = 100
-      vmid        = 101
-      cores       = 2
-      memory      = 4096
+      type    = "haos"
+      target  = "pve1"
+      vlan_id = 100
+      vmid    = 101
+      cores   = 2
+      # TEMP: 3 GB while the Pi workloads are being migrated to pve1; bump back
+      # to 4096 once pve2 is up and some workloads move to the Pi.
+      memory      = 3072
       disk_size   = 32
       ip          = "192.168.100.40/24"
       on_boot     = true
