@@ -18,7 +18,7 @@
 - name: Install rclone (official build - Debian apt rclone is outdated and lacks
     the OneDrive multipart-upload fix from v1.66.0)
   ansible.builtin.get_url:
-    url: "https://downloads.rclone.org/rclone-current-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}.deb"
+    url: "https://downloads.rclone.org/rclone-current-linux-{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}.deb"
     dest: /tmp/rclone-current.deb
     mode: "0644"
   register: rclone_deb
