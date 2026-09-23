@@ -28,19 +28,32 @@ load_backup_creds
 : "${HIDRIVE_PASSWORD:?}"
 : "${RESTIC_PASSWORD_HIDRIVE:?}"
 
-# HiDrive is reached via an rclone WebDAV remote (the Debian restic build has no
-# webdav backend, so restic uses its rclone: backend; rclone also serves the
-# OneDrive destination later). Build both var blobs as JSON to stay safe against
-# special chars in credentials.
-RCLONE_JSON="$(HIDRIVE_U="$HIDRIVE_USER" HIDRIVE_P="$HIDRIVE_PASSWORD" \
-  python3 -c 'import json, os; print(json.dumps([{"name": "hidrive", "url": "https://webdav.hidrive.strato.com", "user": os.environ["HIDRIVE_U"], "password": os.environ["HIDRIVE_P"]}]))')"
-
-DEST_JSON="$(HIDRIVE_REPO="rclone:hidrive:/users/${HIDRIVE_USER}/backups/unifi01" RESTIC_PW="$RESTIC_PASSWORD_HIDRIVE" \
-  python3 -c 'import json, os; print(json.dumps([{"name": "hidrive", "repo": os.environ["HIDRIVE_REPO"], "password": os.environ["RESTIC_PW"]}]))')"
+# Build the extra-vars object as JSON. Destinations go through restic's rclone:
+# backend (the Debian restic build has no webdav backend; rclone serves both the
+# HiDrive WebDAV remote and, when configured, the OneDrive remote).
+VARS_JSON="$(HIDRIVE_U="$HIDRIVE_USER" HIDRIVE_P="$HIDRIVE_PASSWORD" \
+  RESTIC_PW_HIDRIVE="$RESTIC_PASSWORD_HIDRIVE" \
+  ONEDRIVE_CFG="${ONEDRIVE_RCLONE_CONFIG:-}" \
+  RESTIC_PW_ONEDRIVE="${RESTIC_PASSWORD_ONEDRIVE:-}" \
+  python3 -c '
+import json, os
+remotes = [{"name": "hidrive", "url": "https://webdav.hidrive.strato.com",
+            "user": os.environ["HIDRIVE_U"], "password": os.environ["HIDRIVE_P"]}]
+dests = [{"name": "hidrive",
+          "repo": "rclone:hidrive:/users/%s/backups/unifi01" % os.environ["HIDRIVE_U"],
+          "password": os.environ["RESTIC_PW_HIDRIVE"]}]
+v = {"backup_rclone_remotes": remotes, "backup_restic_destinations": dests}
+if os.environ["ONEDRIVE_CFG"]:
+    if not os.environ["RESTIC_PW_ONEDRIVE"]:
+        raise SystemExit("ONEDRIVE_RCLONE_CONFIG set but RESTIC_PASSWORD_ONEDRIVE missing")
+    v["backup_rclone_extra_config"] = os.environ["ONEDRIVE_CFG"]
+    dests.append({"name": "onedrive", "repo": "rclone:onedrive:/backups/unifi01",
+                  "password": os.environ["RESTIC_PW_ONEDRIVE"]})
+print(json.dumps(v))
+')"
 
 cd "$ROOT/ansible"
-ARGS=(-i "${HOST}," -u ansible -b \
-  -e "{\"backup_rclone_remotes\": ${RCLONE_JSON}, \"backup_restic_destinations\": ${DEST_JSON}}")
+ARGS=(-i "${HOST}," -u ansible -b -e "$VARS_JSON")
 if [[ "$CHECK" -eq 1 ]]; then
   ARGS+=(--check --diff)
 fi

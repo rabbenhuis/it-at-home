@@ -601,11 +601,14 @@ them back.
 
 ### Adding OneDrive as a second destination
 
-Once rclone's OneDrive remote works (rclone built-in client, or an own app
-registration), store `ONEDRIVE_RCLONE_CONFIG` (the rclone.conf blob),
-`ONEDRIVE_CLIENT_ID`/`ONEDRIVE_CLIENT_SECRET` and `RESTIC_PASSWORD_ONEDRIVE` in
-bws, then add `rclone:onedrive:/backups/<host>` as a second entry in
-`backup_restic_destinations` (the role loops over destinations; no code changes).
+Enabled. OneDrive is reached via an rclone `onedrive` remote (built-in client);
+store the `[onedrive]` block from `rclone config show onedrive` as
+`ONEDRIVE_RCLONE_CONFIG` (plus `RESTIC_PASSWORD_ONEDRIVE`) in bws, and the runner
+adds `rclone:onedrive:/backups/<host>` as a second destination automatically.
+
+**Note:** rclone must be >= v1.66 — the Debian apt package is older and fails
+OneDrive multipart uploads with `unauthenticated: Unauthenticated` (fixed in
+1.66.0). The role installs the official rclone build to avoid this.
 
 ## Notes / caveats
 

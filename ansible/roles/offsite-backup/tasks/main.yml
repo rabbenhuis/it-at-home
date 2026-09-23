@@ -15,13 +15,18 @@
   environment:
     DEBIAN_FRONTEND: noninteractive
 
-- name: Install rclone (rclone backend for WebDAV/OneDrive destinations)
-  ansible.builtin.apt:
-    name: rclone
-    state: present
-    update_cache: true
-  environment:
-    DEBIAN_FRONTEND: noninteractive
+- name: Install rclone (official build - Debian apt rclone is outdated and lacks
+    the OneDrive multipart-upload fix from v1.66.0)
+  ansible.builtin.get_url:
+    url: "https://downloads.rclone.org/rclone-current-linux-{{ 'arm64' if ansible_architecture == 'aarch64' else 'amd64' }}.deb"
+    dest: /tmp/rclone-current.deb
+    mode: "0644"
+  register: rclone_deb
+
+- name: Install rclone .deb (replaces the apt package)
+  ansible.builtin.command: dpkg -i /tmp/rclone-current.deb
+  when: rclone_deb.changed
+  changed_when: false
 
 - name: Deploy restic repository env (root-only)
   ansible.builtin.template:
@@ -44,6 +49,27 @@
   environment:
     RCLONE_PASS: "{{ item.password }}"
   loop: "{{ backup_rclone_remotes }}"
+  no_log: true
+  changed_when: false
+
+# Merge a pre-configured rclone remote (e.g. [onedrive]) into the config. The
+# blob (from `rclone config show onedrive`) is written root-only, then appended
+# after removing any existing onedrive section (idempotent).
+- name: Write pre-configured rclone remote blob (root-only)
+  ansible.builtin.copy:
+    content: "{{ backup_rclone_extra_config }}"
+    dest: /etc/restic/extra-rclone.conf
+    mode: "0600"
+    owner: root
+    group: root
+  when: backup_rclone_extra_config | length > 0
+  no_log: true
+
+- name: Merge pre-configured rclone remote into config
+  ansible.builtin.command: >
+    sh -c 'rclone config delete onedrive --config {{ backup_rclone_config }} 2>/dev/null || true;
+    { printf "\n"; cat /etc/restic/extra-rclone.conf; } >> {{ backup_rclone_config }}'
+  when: backup_rclone_extra_config | length > 0
   no_log: true
   changed_when: false
 

@@ -17,11 +17,11 @@ FAILED=0
 # --- {{ d.name }} ---
 export RESTIC_REPOSITORY="$BACKUP_DEST_{{ d.name | upper }}_REPO"
 export RESTIC_PASSWORD="$BACKUP_DEST_{{ d.name | upper }}_PASSWORD"
-restic cat config >/dev/null 2>&1 || restic init >>"$LOG" 2>&1
-if ! restic backup "${BACKUP_PATHS[@]}" >>"$LOG" 2>&1; then
+restic cat config >/dev/null 2>&1 || timeout {{ backup_timeout }} restic init >>"$LOG" 2>&1
+if ! timeout {{ backup_timeout }} restic backup "${BACKUP_PATHS[@]}" >>"$LOG" 2>&1; then
   FAILED=1
 fi
-restic forget \
+timeout {{ backup_timeout }} restic forget \
   --keep-daily {{ backup_retention.daily }} \
   --keep-weekly {{ backup_retention.weekly }}{% if backup_retention.monthly|default(0) > 0 %} \
   --keep-monthly {{ backup_retention.monthly }}{% endif %} \

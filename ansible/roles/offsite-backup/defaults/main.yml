@@ -24,6 +24,11 @@ backup_paths: []
 backup_rclone_remotes: []
 backup_rclone_config: /etc/restic/rclone.conf
 
+# Optional pre-configured rclone remote section(s) merged into the config, e.g.
+# the [onedrive] remote from `rclone config show onedrive` (built-in client /
+# own app registration token). Passed at run time from bws, never committed.
+backup_rclone_extra_config: ""
+
 # Retention mirroring the guest's PVE backup tier (deploy/backup.tf). Set
 # monthly to 0 to disable monthly keeps (tiers 2/3 have none).
 backup_retention:
@@ -38,3 +43,6 @@ backup_schedule: "0 3 * * *"
 # Email helper (from the base role) for failure notifications.
 backup_send_mail: /usr/local/bin/send-mail
 backup_log_file: /var/log/offsite-backup.log
+
+# Per-destination timeout (seconds) so a stuck backend can't hang the cron run.
+backup_timeout: 1800

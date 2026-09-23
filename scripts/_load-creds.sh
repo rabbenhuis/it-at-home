@@ -79,7 +79,9 @@ load_pm_creds() {
 #   HIDRIVE_USER            e.g. mabbenhuis
 #   HIDRIVE_PASSWORD        Strato HiDrive WebDAV password
 #   RESTIC_PASSWORD_HIDRIVE restic repo encryption password for the HiDrive repo
-# (OneDrive secrets are added later when that destination is enabled.)
+# Optional (OneDrive destination):
+#   ONEDRIVE_RCLONE_CONFIG  rclone.conf blob containing the [onedrive] remote
+#   RESTIC_PASSWORD_ONEDRIVE restic repo encryption password for the OneDrive repo
 load_backup_creds() {
   local key val
   for key in HIDRIVE_USER HIDRIVE_PASSWORD RESTIC_PASSWORD_HIDRIVE; do
@@ -89,6 +91,15 @@ load_backup_creds() {
         return 1
       }
       export "$key=$val"
+    fi
+  done
+  # OneDrive secrets are optional (only fetched when bws is configured).
+  for key in ONEDRIVE_RCLONE_CONFIG RESTIC_PASSWORD_ONEDRIVE; do
+    if [[ -z "${!key:-}" && -n "${BWS_ACCESS_TOKEN:-}" && -n "${BWS_PROJECT_ID:-}" ]]; then
+      val="$(bws_value "$key" 2>/dev/null)" || true
+      if [[ -n "$val" ]]; then
+        export "$key=$val"
+      fi
     fi
   done
 }
