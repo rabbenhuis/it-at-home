@@ -1,0 +1,40 @@
+# Offsite restic backups (offsite-backup role) defaults.
+#
+# A shared role that installs restic and backs a set of paths to one or more
+# offsite restic repositories (e.g. Strato HiDrive via WebDAV, later OneDrive
+# via rclone), with retention mirroring the PVE backup tier of the guest.
+#
+# Secrets (repository URLs with credentials + restic passwords) are passed as
+# `backup_restic_destinations` at run time (loaded from bws by
+# scripts/offsite-backup.sh), never stored in this repo.
+
+# List of repositories to back up to. Each entry: { name, repo, password }.
+#   name     short label used for the per-repo env var (e.g. "hidrive")
+#   repo     restic repository URL (e.g. webdav:https://user:pass@host/path)
+#   password the restic repository encryption password for that repo
+backup_restic_destinations: []
+
+# Absolute paths to back up (files/dirs).
+backup_paths: []
+
+# rclone WebDAV remotes (used via restic's rclone: backend). Each entry:
+#   { name, url, user, password } - password is obscured into the config by the
+# role. The Debian restic build has no webdav backend, so WebDAV destinations
+# go through rclone (which we also need for OneDrive later).
+backup_rclone_remotes: []
+backup_rclone_config: /etc/restic/rclone.conf
+
+# Retention mirroring the guest's PVE backup tier (deploy/backup.tf). Set
+# monthly to 0 to disable monthly keeps (tiers 2/3 have none).
+backup_retention:
+  daily: 7
+  weekly: 4
+  monthly: 6
+
+# Cron schedule (crontab 5-field format). unifi01's PVE tier-1 runs at 02:30,
+# so the offsite run defaults to 03:00.
+backup_schedule: "0 3 * * *"
+
+# Email helper (from the base role) for failure notifications.
+backup_send_mail: /usr/local/bin/send-mail
+backup_log_file: /var/log/offsite-backup.log

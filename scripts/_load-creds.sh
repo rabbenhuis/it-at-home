@@ -73,3 +73,22 @@ load_pm_creds() {
     fi
   done
 }
+
+# Offsite restic backup credentials (scripts/offsite-backup.sh). Falls back to
+# bws under the same keys when not exported:
+#   HIDRIVE_USER            e.g. mabbenhuis
+#   HIDRIVE_PASSWORD        Strato HiDrive WebDAV password
+#   RESTIC_PASSWORD_HIDRIVE restic repo encryption password for the HiDrive repo
+# (OneDrive secrets are added later when that destination is enabled.)
+load_backup_creds() {
+  local key val
+  for key in HIDRIVE_USER HIDRIVE_PASSWORD RESTIC_PASSWORD_HIDRIVE; do
+    if [[ -z "${!key:-}" ]]; then
+      val="$(bws_value "$key")" || {
+        echo "load_backup_creds: $key is not exported and not found in bws" >&2
+        return 1
+      }
+      export "$key=$val"
+    fi
+  done
+}

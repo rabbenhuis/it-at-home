@@ -1,0 +1,21 @@
+---
+# Provision offsite restic backups (offsite-backup role).
+#
+# Run via scripts/offsite-backup.sh <host-ip> [--check], which loads the
+# repository credentials from bws/env and passes `backup_restic_destinations`
+# as extra vars. The non-secret host config (paths, retention, schedule) lives
+# here. Generalize to per-host vars when more than unifi01 uses it.
+- name: Provision offsite restic backups
+  hosts: all
+  become: true
+  vars:
+    backup_paths:
+      - /home/uosserver/.local/share/containers/storage/volumes/uosserver_var_lib_unifi/_data/backup
+    # unifi01 PVE tier-1: daily 7 / weekly 4 / monthly 6
+    backup_retention:
+      daily: 7
+      weekly: 4
+      monthly: 6
+    backup_schedule: "0 3 * * *"
+  roles:
+    - role: offsite-backup

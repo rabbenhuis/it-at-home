@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Offsite restic backup: for each configured destination, init (if needed),
+# back up the configured paths, then apply retention. Emails on failure.
+set -euo pipefail
+
+source /etc/restic/env
+export RESTIC_CACHE_DIR=/var/cache/restic
+export RCLONE_CONFIG={{ backup_rclone_config }}
+mkdir -p "$RESTIC_CACHE_DIR"
+
+BACKUP_PATHS=({% for p in backup_paths %} "{{ p }}"{% endfor %})
+LOG={{ backup_log_file }}
+SUBJECT="Offsite backup failed on $(hostname -s)"
+FAILED=0
+
+{% for d in backup_restic_destinations %}
+# --- {{ d.name }} ---
+export RESTIC_REPOSITORY="$BACKUP_DEST_{{ d.name | upper }}_REPO"
+export RESTIC_PASSWORD="$BACKUP_DEST_{{ d.name | upper }}_PASSWORD"
+restic cat config >/dev/null 2>&1 || restic init >>"$LOG" 2>&1
+if ! restic backup "${BACKUP_PATHS[@]}" >>"$LOG" 2>&1; then
+  FAILED=1
+fi
+restic forget \
+  --keep-daily {{ backup_retention.daily }} \
+  --keep-weekly {{ backup_retention.weekly }}{% if backup_retention.monthly|default(0) > 0 %} \
+  --keep-monthly {{ backup_retention.monthly }}{% endif %} \
+  --prune >>"$LOG" 2>&1 || true
+{% endfor %}
+
+if [[ "$FAILED" -eq 1 ]]; then
+  { echo "$SUBJECT"; cat "$LOG"; } | {{ backup_send_mail }}
+  exit 1
+fi

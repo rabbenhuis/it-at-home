@@ -1,0 +1,70 @@
+---
+- name: Ensure /etc/restic exists
+  ansible.builtin.file:
+    path: /etc/restic
+    state: directory
+    mode: "0700"
+    owner: root
+    group: root
+
+- name: Install restic
+  ansible.builtin.apt:
+    name: restic
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Install rclone (rclone backend for WebDAV/OneDrive destinations)
+  ansible.builtin.apt:
+    name: rclone
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+- name: Deploy restic repository env (root-only)
+  ansible.builtin.template:
+    src: env.j2
+    dest: /etc/restic/env
+    mode: "0600"
+    owner: root
+    group: root
+
+# Create the rclone WebDAV remotes. The plaintext password is passed via env
+# (not argv) and obscured with `rclone obscure`; no_log keeps it out of output.
+# Delete-then-create keeps the task idempotent.
+- name: Create rclone WebDAV remotes
+  ansible.builtin.shell: |
+    rclone config delete "{{ item.name }}" --config "{{ backup_rclone_config }}" >/dev/null 2>&1 || true
+    rclone config create "{{ item.name }}" webdav \
+      url="{{ item.url }}" vendor=other user="{{ item.user }}" \
+      pass="$(rclone obscure "$RCLONE_PASS")" \
+      --config "{{ backup_rclone_config }}"
+  environment:
+    RCLONE_PASS: "{{ item.password }}"
+  loop: "{{ backup_rclone_remotes }}"
+  no_log: true
+  changed_when: false
+
+- name: Ensure restic cache dir
+  ansible.builtin.file:
+    path: /var/cache/restic
+    state: directory
+    mode: "0700"
+
+- name: Deploy offsite-backup script
+  ansible.builtin.template:
+    src: offsite-backup.sh.j2
+    dest: /usr/local/sbin/offsite-backup.sh
+    mode: "0755"
+    owner: root
+    group: root
+
+- name: Deploy offsite-backup cron
+  ansible.builtin.template:
+    src: offsite-backup.cron.j2
+    dest: /etc/cron.d/offsite-backup
+    mode: "0644"
+    owner: root
+    group: root

@@ -81,6 +81,8 @@ ansible/
     pve.yml                    # PVE host hardening + access control
     adguard.yml                # deploy AdGuard Home (post-deploy)
     unbound.yml                # deploy unbound resolver (post-deploy)
+    avahi.yml                  # deploy mDNS reflector (post-deploy)
+    backup.yml                 # provision offsite restic backups (post-deploy)
   roles/
     base/                      # shared hardening (LXC and VM)
     podman/
@@ -89,8 +91,11 @@ ansible/
     pve/                       # PVE host hardening + pveum access control
     adguard/                   # AdGuard Home install + config (deployed hosts)
     unbound/                   # unbound recursive resolver (deployed hosts)
+    avahi/                     # avahi mDNS reflector (deployed hosts)
+    offsite-backup/            # restic offsite backups (deployed hosts)
 scripts/build-template.sh      # full pipeline: apply -> provision -> convert
 scripts/deploy-hosts.sh        # deploy hosts from deployments.tf
+scripts/offsite-backup.sh      # provision offsite restic backups (see below)
 scripts/_load-creds.sh         # bws -> TF_VAR_* credential loader
 scripts/pve-hosts.sh           # harden/provision the PVE hosts
 scripts/bootstrap-pve.sh       # bootstrap a fresh PVE host (pveum + bws)
@@ -383,6 +388,7 @@ Point podman/docker at the new native template and give every build a fresh VMID
 | `docker.yml` | base, docker | ansible |
 | `vm.yml` | base, vm | debian (cloud-init) |
 | `pve.yml` | pve | ansible (PVE hosts) |
+| `backup.yml` | offsite-backup | ansible (deployed hosts) |
 
 All playbooks target `all` hosts; the build script passes the instance IP
 inline:
@@ -546,6 +552,60 @@ curl -ksS -X POST -H "Authorization: $AUTH" "$API/nodes/bm-pve-prd-01/lxc/9000/s
 curl -ksS -X POST -H "Authorization: $AUTH" "$API/nodes/bm-pve-prd-01/lxc/9000/template"
 terraform state rm 'module.template_native.proxmox_virtual_environment_container.build[0]'
 ```
+
+## Offsite backups (restic → HiDrive + OneDrive)
+
+Alongside the PVE snapshot backups (`deploy/backup.tf`, whole-guest recovery), the
+`offsite-backup` role creates **application-level** restic backups of a guest's
+data to offsite repositories, encrypted and versioned. Current scope: unifi01
+(UniFi automatic backups); mqtt/zigbee2mqtt/matter reuse the role once deployed.
+
+- **How it works**: a daily cron (`03:00`) runs `/usr/local/sbin/offsite-backup.sh`,
+  which per destination does `restic init` (first run) → `restic backup <paths>` →
+  `restic forget`/`prune` with retention mirroring the guest's PVE tier. Failures
+  email `notify@abbenhuis.net` via the base role's msmtp `send-mail`.
+- **Destinations** are restic repositories passed at provision time:
+  - **HiDrive** (Strato) via an rclone WebDAV remote (`hidrive` →
+    `https://webdav.hidrive.strato.com`, user home `/users/<username>/backups/<host>`).
+    The Debian restic package has no `webdav` backend, so WebDAV goes through
+    restic's `rclone:` backend (rclone also serves the OneDrive destination).
+  - **OneDrive** via rclone (not yet enabled — see below).
+- **Retention** mirrors the guest's PVE tier (e.g. unifi01 tier-1 →
+  `keep-daily 7 / keep-weekly 4 / keep-monthly 6 --prune`).
+- **Credentials** are loaded from bws by `scripts/offsite-backup.sh`
+  (`HIDRIVE_USER`, `HIDRIVE_PASSWORD`, `RESTIC_PASSWORD_HIDRIVE`), written to
+  root-only `/etc/restic/env` and `/etc/restic/rclone.conf` (0600) — never in the repo.
+
+### Provisioning a host
+
+```bash
+./scripts/offsite-backup.sh <host-ip> [--check]    # loads creds, runs playbooks/backup.yml
+ssh ansible@<host-ip> 'sudo /usr/local/sbin/offsite-backup.sh'   # first backup now
+```
+
+The playbook (`ansible/playbooks/backup.yml`) holds the non-secret per-host
+config (paths, retention, schedule); the destinations/secrets arrive as extra vars.
+
+### Verifying / restoring
+
+```bash
+# list snapshots
+ssh ansible@<host-ip> 'sudo bash -c "source /etc/restic/env; export RESTIC_REPOSITORY=\$BACKUP_DEST_HIDRIVE_REPO RESTIC_PASSWORD=\$BACKUP_DEST_HIDRIVE_PASSWORD RESTIC_CACHE_DIR=/var/cache/restic RCLONE_CONFIG=/etc/restic/rclone.conf; restic snapshots"'
+# restore a snapshot (e.g. to /tmp)
+ssh ansible@<host-ip> 'sudo bash -c "source /etc/restic/env; export RESTIC_REPOSITORY=\$BACKUP_DEST_HIDRIVE_REPO RESTIC_PASSWORD=\$BACKUP_DEST_HIDRIVE_PASSWORD RESTIC_CACHE_DIR=/var/cache/restic RCLONE_CONFIG=/etc/restic/rclone.conf; restic restore <id> --target /tmp/restore"'
+```
+
+Note: restic stores encrypted, deduplicated chunks — the original files (e.g.
+`.unf`) are not browsable on the destination; use `restic ls`/`restore` to get
+them back.
+
+### Adding OneDrive as a second destination
+
+Once rclone's OneDrive remote works (rclone built-in client, or an own app
+registration), store `ONEDRIVE_RCLONE_CONFIG` (the rclone.conf blob),
+`ONEDRIVE_CLIENT_ID`/`ONEDRIVE_CLIENT_SECRET` and `RESTIC_PASSWORD_ONEDRIVE` in
+bws, then add `rclone:onedrive:/backups/<host>` as a second entry in
+`backup_restic_destinations` (the role loops over destinations; no code changes).
 
 ## Notes / caveats
 
