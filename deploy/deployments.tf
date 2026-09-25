@@ -217,46 +217,5 @@ locals {
       backup        = "tier-2"
       description   = "MQTT broker (mosquitto) - IoT messaging (Managed by Terraform)"
     }
-    # web1 = {
-    #   type          = "lxc"
-    #   target        = "pve1"
-    #   vlan_id       = 70
-    #   template_vmid = 9010
-    #   vmid          = 101
-    #   cores         = 2
-    #   memory        = 1024
-    #   disk_size     = 16
-    #   ip            = "192.168.70.11/24"
-    #   on_boot       = true
-    #   startup       = { order = 10, up_delay = 30, down_delay = 30 }
-    #   unprivileged  = true
-    #   nesting       = true
-    #   role          = "adguard"
-    #   description   = "AdGuard Home DNS blocker"
-    # }
-    #
-    # db1 = {
-    #   type          = "lxc"
-    #   target        = "pve2"
-    #   vlan_id       = 70
-    #   template_vmid = 9000
-    #   vmid          = 102
-    #   cores         = 4
-    #   memory        = 4096
-    #   disk_size     = 32
-    #   ip            = "192.168.70.21/24"
-    # }
-    #
-    # app1 = {
-    #   type          = "vm"
-    #   target        = "pve1"
-    #   vlan_id       = 70
-    #   template_vmid = 9200
-    #   vmid          = 110
-    #   cores         = 2
-    #   memory        = 4096
-    #   ip            = "192.168.70.31/24"
-    #   role          = "unbound"
-    # }
   }
 }

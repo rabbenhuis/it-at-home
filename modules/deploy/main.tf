@@ -17,7 +17,8 @@ resource "proxmox_virtual_environment_container" "instance" {
   start_on_boot = var.on_boot
 
   clone {
-    vm_id = var.template_vmid
+    vm_id        = var.template_vmid
+    datastore_id = var.disk_datastore
   }
 
   dynamic "startup" {
