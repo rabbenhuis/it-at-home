@@ -102,6 +102,24 @@ resource "proxmox_virtual_environment_firewall_ipset" "haos_iot_sources" {
   }
 }
 
+# Home Assistant servers (haos01 now, Pi home-assistant until HA migrates).
+# Referenced from rules where HAOS connects to services (e.g. the UniFi
+# controller API) as source "+ha-servers".
+resource "proxmox_virtual_environment_firewall_ipset" "ha_servers" {
+  provider = proxmox.pve1
+
+  name    = "ha-servers"
+  comment = "Home Assistant servers"
+
+  dynamic "cidr" {
+    for_each = local.firewall_ha_servers
+    content {
+      name    = cidr.value.ip
+      comment = cidr.value.name
+    }
+  }
+}
+
 # WireGuard overlay clients (wg-home, 172.18.10.0/24) - all peers may reach the
 # HAOS UI. Also folded into adguard_dns_sources for DNS. Referenced from the
 # haos role's rule as source "+wg-sources".

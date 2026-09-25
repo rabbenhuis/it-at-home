@@ -142,37 +142,35 @@ locals {
       description    = "UniFi OS Server - Network controller for UniFi gear (Managed by Terraform)"
     }
     infra-core01 = {
-      type           = "lxc"
-      target         = "pve1"
-      vlan_id        = 90
-      template_vmid  = 9000
-      vmid           = 204
-      cores          = 1
-      memory         = 512
-      disk_size      = 16
-      disk_datastore = "local-ssd"
-      ip             = "192.168.90.45/24"
-      on_boot        = true
-      startup        = { order = 20, up_delay = 15, down_delay = 60 }
-      unprivileged   = true
-      role           = "infra-core"
-      description    = "NTP time server + postfix relay (replaces Pi docker relay) (Managed by Terraform)"
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 90
+      template_vmid = 9000
+      vmid          = 204
+      cores         = 1
+      memory        = 512
+      disk_size     = 16
+      ip            = "192.168.90.45/24"
+      on_boot       = true
+      startup       = { order = 20, up_delay = 15, down_delay = 60 }
+      unprivileged  = true
+      role          = "infra-core"
+      description   = "NTP time server + postfix relay (replaces Pi docker relay) (Managed by Terraform)"
     }
     avahi01 = {
-      type           = "lxc"
-      target         = "pve1"
-      vlan_id        = 90
-      template_vmid  = 9000
-      vmid           = 203
-      cores          = 1
-      memory         = 256
-      disk_size      = 8
-      disk_datastore = "local-ssd"
-      ip             = "192.168.90.44/24"
-      on_boot        = true
-      startup        = { order = 25, up_delay = 15, down_delay = 45 }
-      role           = "avahi"
-      backup         = "tier-3"
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 90
+      template_vmid = 9000
+      vmid          = 203
+      cores         = 1
+      memory        = 256
+      disk_size     = 8
+      ip            = "192.168.90.44/24"
+      on_boot       = true
+      startup       = { order = 25, up_delay = 15, down_delay = 45 }
+      role          = "avahi"
+      backup        = "tier-3"
       # Link-only NICs (no IP): receive/reflect mDNS on each VLAN. firewall is
       # off on these so the deny-by-default guest firewall can't drop multicast.
       extra_networks = [
@@ -203,22 +201,21 @@ locals {
       description   = "Home Assistant OS - smart home hub (Managed by Terraform)"
     }
     mosquitto01 = {
-      type           = "lxc"
-      target         = "pve1"
-      vlan_id        = 150
-      template_vmid  = 9000
-      vmid           = 401
-      cores          = 1
-      memory         = 512
-      disk_size      = 8
-      disk_datastore = "local-ssd"
-      ip             = "192.168.150.40/24"
-      on_boot        = true
-      startup        = { order = 30, up_delay = 15, down_delay = 60 }
-      unprivileged   = true
-      role           = "mqtt"
-      backup         = "tier-2"
-      description    = "MQTT broker (mosquitto) - IoT messaging (Managed by Terraform)"
+      type          = "lxc"
+      target        = "pve1"
+      vlan_id       = 150
+      template_vmid = 9000
+      vmid          = 401
+      cores         = 1
+      memory        = 512
+      disk_size     = 8
+      ip            = "192.168.150.40/24"
+      on_boot       = true
+      startup       = { order = 30, up_delay = 15, down_delay = 60 }
+      unprivileged  = true
+      role          = "mqtt"
+      backup        = "tier-2"
+      description   = "MQTT broker (mosquitto) - IoT messaging (Managed by Terraform)"
     }
     # web1 = {
     #   type          = "lxc"

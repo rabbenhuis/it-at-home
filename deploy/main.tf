@@ -68,6 +68,7 @@ module "deploy_pve1" {
     proxmox_virtual_environment_firewall_ipset.unifi_device_sources,
     proxmox_virtual_environment_firewall_ipset.haos_ui_sources,
     proxmox_virtual_environment_firewall_ipset.haos_iot_sources,
+    proxmox_virtual_environment_firewall_ipset.ha_servers,
     proxmox_virtual_environment_firewall_ipset.wg_sources,
     proxmox_virtual_environment_firewall_ipset.wg_admin,
     proxmox_virtual_environment_firewall_ipset.ntp_sources,

@@ -58,6 +58,13 @@ locals {
   firewall_haos_iot_vlans   = [150, 152]
   firewall_haos_iot_sources = [for id in local.firewall_haos_iot_vlans : module.cluster.vlans[id]]
 
+  # Home Assistant servers (haos01 now, the Pi home-assistant container until HA
+  # migrates). Rendered into 'ha-servers'; used where HAOS talks to services.
+  firewall_ha_servers = [
+    { ip = "192.168.100.40", name = "haos01" },
+    { ip = "192.168.100.70", name = "Pi home-assistant (pre-migration)" },
+  ]
+
   # WireGuard overlay (interface wg-home, 172.18.10.0/24). All peers may reach
   # the HAOS UI (presence/proximity); wg-darth-sidious (172.18.10.26, private
   # phone) and wg-laptop (172.18.10.37) may also reach the other admin services
@@ -133,6 +140,10 @@ locals {
       source = "+unifi-device-sources", comment = "Device adoption (UniFi devices)" },
       { type = "in", action = "ACCEPT", proto = "udp", dport = "10003",
       source = "+unifi-device-sources", comment = "Device discovery (UniFi devices)" },
+      # Home Assistant: UniFi integration talks to the UniFi OS Server web
+      # console / controller API on 11443.
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "11443",
+      source = "+ha-servers", comment = "UniFi controller API (HA)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
     avahi = [
