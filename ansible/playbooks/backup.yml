@@ -1,21 +1,39 @@
 ---
 # Provision offsite restic backups (offsite-backup role).
 #
-# Run via scripts/offsite-backup.sh <host-ip> [--check], which loads the
-# repository credentials from bws/env and passes `backup_restic_destinations`
-# as extra vars. The non-secret host config (paths, retention, schedule) lives
-# here. Generalize to per-host vars when more than unifi01 uses it.
+# Run via scripts/offsite-backup.sh <host-ip> <hostname> [--check], which loads
+# the repository credentials from bws/env and passes `backup_restic_destinations`
+# (plus `backup_host`) as extra vars. The non-secret host config (paths,
+# retention, schedule) is selected from `backup_hosts` below by the `backup_host`
+# var; the offsite-backup role consumes the selected values.
 - name: Provision offsite restic backups
   hosts: all
   become: true
   vars:
-    backup_paths:
-      - /home/uosserver/.local/share/containers/storage/volumes/uosserver_var_lib_unifi/_data/backup
-    # unifi01 PVE tier-1: daily 7 / weekly 4 / monthly 6
-    backup_retention:
-      daily: 7
-      weekly: 4
-      monthly: 6
-    backup_schedule: "0 3 * * *"
+    backup_host: "unifi01"
+    backup_hosts:
+      unifi01:
+        backup_paths:
+          - /home/uosserver/.local/share/containers/storage/volumes/uosserver_var_lib_unifi/_data/backup
+        # unifi01 PVE tier-1: daily 7 / weekly 4 / monthly 6
+        backup_retention:
+          daily: 7
+          weekly: 4
+          monthly: 6
+        backup_schedule: "0 3 * * *"
+      mosquitto01:
+        backup_paths:
+          - /var/lib/mosquitto
+          - /etc/mosquitto
+        # mosquitto01 PVE tier-2: daily 7 / weekly 4 (no monthly keeps)
+        backup_retention:
+          daily: 7
+          weekly: 4
+          monthly: 0
+        backup_schedule: "0 3 * * *"
   roles:
     - role: offsite-backup
+      vars:
+        backup_paths: "{{ backup_hosts[backup_host].backup_paths }}"
+        backup_retention: "{{ backup_hosts[backup_host].backup_retention }}"
+        backup_schedule: "{{ backup_hosts[backup_host].backup_schedule }}"

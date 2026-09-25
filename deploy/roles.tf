@@ -11,5 +11,6 @@ locals {
     harden     = "harden.yml"
     unifi      = "unifi.yml"
     infra-core = "infra-core.yml"
+    mqtt       = "mqtt.yml"
   }
 }

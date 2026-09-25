@@ -1,0 +1,19 @@
+# MQTT broker (mosquitto) role defaults.
+#
+# Per-service MQTT users. Passwords are NOT stored here - they are passed as
+# extra vars at run time (loaded from bws by scripts/deploy-hosts.sh) and are
+# never committed. Users:
+#   hass          Home Assistant integration (broad read/write)
+#   zigbee2mqtt   zigbee2mqtt device state + discovery (restricted to its topics)
+mqtt_password_hass: ""
+mqtt_password_zigbee2mqtt: ""
+
+# Listener + auth for the broker. Single plaintext listener on 1883; auth via
+# password_file + acl_file, anonymous connections refused.
+mqtt_listener_port: 1883
+
+# Persistence: retained messages + persistent sessions survive restarts.
+mqtt_persistence: true
+mqtt_persistence_location: /var/lib/mosquitto
+mqtt_password_file: /etc/mosquitto/passwd
+mqtt_acl_file: /etc/mosquitto/acl

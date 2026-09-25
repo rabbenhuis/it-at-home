@@ -103,3 +103,20 @@ load_backup_creds() {
     fi
   done
 }
+
+# MQTT broker (mosquitto) per-service user passwords (scripts/deploy-hosts.sh).
+# Falls back to bws under the same keys when not exported:
+#   MOSQUITTO_PASSWORD_HASS        Home Assistant MQTT user password
+#   MOSQUITTO_PASSWORD_ZIGBEE2MQTT zigbee2mqtt MQTT user password
+load_mqtt_creds() {
+  local key val
+  for key in MOSQUITTO_PASSWORD_HASS MOSQUITTO_PASSWORD_ZIGBEE2MQTT; do
+    if [[ -z "${!key:-}" ]]; then
+      val="$(bws_value "$key")" || {
+        echo "load_mqtt_creds: $key is not exported and not found in bws" >&2
+        return 1
+      }
+      export "$key=$val"
+    fi
+  done
+}

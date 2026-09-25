@@ -2,7 +2,11 @@
 set -euo pipefail
 
 # Provision the offsite restic backups (offsite-backup role) on a host.
-#   ./offsite-backup.sh <host-ip> [--check]
+#   ./offsite-backup.sh <host-ip> <hostname> [--check]
+#
+# <hostname> selects the per-host config in playbooks/backup.yml (paths,
+# retention, schedule) and names the restic repo folders (backups/<hostname>).
+# Existing callers with just <host-ip> default to 'unifi01' for backward compat.
 #
 # Loads credentials from bws (or exported env) and runs playbooks/backup.yml,
 # passing the restic destinations (repo URLs + passwords) as extra vars.
@@ -14,10 +18,21 @@ set -euo pipefail
 # --check is a dry-run that never applies.
 
 CHECK=0
-if [[ "${2:-}" == "--check" ]]; then
-  CHECK=1
-fi
-HOST="${1:?usage: offsite-backup.sh <host-ip> [--check]}"
+HOST=""
+HOSTNAME="unifi01"
+for a in "$@"; do
+  case "$a" in
+    --check) CHECK=1 ;;
+    *)
+      if [[ -z "$HOST" ]]; then
+        HOST="$a"
+      elif [[ "$HOSTNAME" == "unifi01" && "$a" != "unifi01" ]]; then
+        HOSTNAME="$a"
+      fi
+      ;;
+  esac
+done
+: "${HOST:?usage: offsite-backup.sh <host-ip> [hostname] [--check]}"
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
@@ -30,24 +45,28 @@ load_backup_creds
 
 # Build the extra-vars object as JSON. Destinations go through restic's rclone:
 # backend (the Debian restic build has no webdav backend; rclone serves both the
-# HiDrive WebDAV remote and, when configured, the OneDrive remote).
+# HiDrive WebDAV remote and, when configured, the OneDrive remote). Repo folders
+# are per host (backups/<hostname>).
 VARS_JSON="$(HIDRIVE_U="$HIDRIVE_USER" HIDRIVE_P="$HIDRIVE_PASSWORD" \
   RESTIC_PW_HIDRIVE="$RESTIC_PASSWORD_HIDRIVE" \
   ONEDRIVE_CFG="${ONEDRIVE_RCLONE_CONFIG:-}" \
   RESTIC_PW_ONEDRIVE="${RESTIC_PASSWORD_ONEDRIVE:-}" \
+  B_HOST="$HOSTNAME" \
   python3 -c '
 import json, os
+host = os.environ["B_HOST"]
 remotes = [{"name": "hidrive", "url": "https://webdav.hidrive.strato.com",
             "user": os.environ["HIDRIVE_U"], "password": os.environ["HIDRIVE_P"]}]
 dests = [{"name": "hidrive",
-          "repo": "rclone:hidrive:/users/%s/backups/unifi01" % os.environ["HIDRIVE_U"],
+          "repo": "rclone:hidrive:/users/%s/backups/%s" % (os.environ["HIDRIVE_U"], host),
           "password": os.environ["RESTIC_PW_HIDRIVE"]}]
-v = {"backup_rclone_remotes": remotes, "backup_restic_destinations": dests}
+v = {"backup_host": host,
+     "backup_rclone_remotes": remotes, "backup_restic_destinations": dests}
 if os.environ["ONEDRIVE_CFG"]:
     if not os.environ["RESTIC_PW_ONEDRIVE"]:
         raise SystemExit("ONEDRIVE_RCLONE_CONFIG set but RESTIC_PASSWORD_ONEDRIVE missing")
     v["backup_rclone_extra_config"] = os.environ["ONEDRIVE_CFG"]
-    dests.append({"name": "onedrive", "repo": "rclone:onedrive:/backups/unifi01",
+    dests.append({"name": "onedrive", "repo": "rclone:onedrive:/backups/%s" % host,
                   "password": os.environ["RESTIC_PW_ONEDRIVE"]})
 print(json.dumps(v))
 ')"

@@ -1,0 +1,15 @@
+# Managed by Ansible (mqtt role) - per-service ACLs. Only the known broker
+# clients get access; everything else is denied (mosquitto denies by default
+# when an acl_file exists and no pattern matches).
+
+# Home Assistant: full read/write access (integration hub, device discovery,
+# homeassistant/status birth+will) plus $SYS monitoring.
+user hass
+topic readwrite #
+topic read $SYS/#
+
+# zigbee2mqtt: publishes device state under its base topic and writes
+# Home Assistant discovery entities; restricted so it cannot touch other topics.
+user zigbee2mqtt
+topic readwrite zigbee2mqtt/#
+topic write homeassistant/#

@@ -72,6 +72,7 @@ module "deploy_pve1" {
     proxmox_virtual_environment_firewall_ipset.wg_admin,
     proxmox_virtual_environment_firewall_ipset.ntp_sources,
     proxmox_virtual_environment_firewall_ipset.mail_relay_sources,
+    proxmox_virtual_environment_firewall_ipset.mqtt_client_sources,
   ]
 
   for_each = local.pve1_hosts

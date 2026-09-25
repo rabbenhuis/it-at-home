@@ -33,7 +33,7 @@ unbound_auth_zones:
     for_upstream: yes
 
 # SOA serial for the per-view auth-zone zonefiles. Bump when records change.
-unbound_auth_zone_serial: 2026092202
+unbound_auth_zone_serial: 2026092502
 
 # TTL for the auth-zone records and SOA minimum.
 unbound_auth_zone_ttl: 300
@@ -48,12 +48,13 @@ unbound_auth_zone_insecure: true
 unbound_records_full:
   - { type: "A", name: "router.mgmt.abbenhuis.internal", value: "192.168.37.1" }
   - { type: "A", name: "unifi01.mgmt.abbenhuis.internal", value: "192.168.37.40" }
-  - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
+  - { type: "CNAME", name: "unifi.mgmt.abbenhuis.internal", value: "unifi01.mgmt.abbenhuis.internal" }
   - { type: "A", name: "bm-pve-prd-01.abbenhuis.internal", value: "192.168.70.64" }
   - { type: "CNAME", name: "mta.abbenhuis.internal", value: "infra-core01.infra.abbenhuis.internal" }
   - { type: "CNAME", name: "ntp.abbenhuis.internal", value: "infra-core01.infra.abbenhuis.internal" }
   - { type: "A", name: "home-assistant.abbenhuis.internal", value: "192.168.100.70" }
-  - { type: "A", name: "mqtt.abbenhuis.internal", value: "192.168.100.71" }
+  - { type: "CNAME", name: "mqtt.abbenhuis.internal", value: "mosquitto01.iot-platform.abbenhuis.internal" }
+  - { type: "A", name: "mosquitto01.iot-platform.abbenhuis.internal", value: "192.168.150.40" }
   - { type: "A", name: "matter-server.abbenhuis.internal", value: "192.168.100.72" }
   - { type: "A", name: "zigbee2mqtt.abbenhuis.internal", value: "192.168.100.73" }
   - { type: "A", name: "mqtt-explorer.abbenhuis.internal", value: "192.168.100.75" }
@@ -83,6 +84,7 @@ unbound_ptr_full:
   - { ip: "192.168.90.45", name: "infra-core01.infra.abbenhuis.internal" }
   - { ip: "192.168.100.40", name: "haos01.apps.abbenhuis.internal" }
   - { ip: "192.168.100.50", name: "qnap01.abbenhuis.internal" }
+  - { ip: "192.168.150.40", name: "mosquitto01.iot-platform.abbenhuis.internal" }
 
 # Limited internal set for the client VLANs (NAS, printer, scanner, HA) plus
 # the management-plane services the workstation on VLANs 120/122 needs to reach.
@@ -98,7 +100,7 @@ unbound_records_limited:
   - { type: "A", name: "bm-pve-prd-01.abbenhuis.internal", value: "192.168.70.64" }
   - { type: "A", name: "mqtt-explorer.abbenhuis.internal", value: "192.168.100.75" }
   - { type: "A", name: "unifi01.mgmt.abbenhuis.internal", value: "192.168.37.40" }
-  - { type: "A", name: "unifi.mgmt.abbenhuis.internal", value: "192.168.37.65" }
+  - { type: "CNAME", name: "unifi.mgmt.abbenhuis.internal", value: "unifi01.mgmt.abbenhuis.internal" }
   - { type: "A", name: "bm-cp-prd-001.abbenhuis.internal", value: "192.168.100.5" }
   - { type: "A", name: "dongle-m.abbenhuis.internal", value: "192.168.150.10" }
   - { type: "A", name: "adguard-pri01.infra.abbenhuis.internal", value: "192.168.90.40" }
@@ -168,6 +170,10 @@ unbound_local_ptrs:
         name: "haos01.apps.abbenhuis.internal"
       - ip: "192.168.100.50"
         name: "qnap01.abbenhuis.internal"
+  - vlan: 150
+    records:
+      - ip: "192.168.150.40"
+        name: "mosquitto01.iot-platform.abbenhuis.internal"
   # - vlan: 90
   #   records:
   #     - ip: "192.168.90.50"

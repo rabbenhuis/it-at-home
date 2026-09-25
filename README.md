@@ -389,6 +389,7 @@ Point podman/docker at the new native template and give every build a fresh VMID
 | `vm.yml` | base, vm | debian (cloud-init) |
 | `pve.yml` | pve | ansible (PVE hosts) |
 | `backup.yml` | offsite-backup | ansible (deployed hosts) |
+| `mqtt.yml` | mqtt | ansible |
 
 All playbooks target `all` hosts; the build script passes the instance IP
 inline:
@@ -558,7 +559,8 @@ terraform state rm 'module.template_native.proxmox_virtual_environment_container
 Alongside the PVE snapshot backups (`deploy/backup.tf`, whole-guest recovery), the
 `offsite-backup` role creates **application-level** restic backups of a guest's
 data to offsite repositories, encrypted and versioned. Current scope: unifi01
-(UniFi automatic backups); mqtt/zigbee2mqtt/matter reuse the role once deployed.
+(UniFi automatic backups) and mosquitto01 (broker state); zigbee2mqtt/matter
+reuse the role once deployed.
 
 - **How it works**: a daily cron (`03:00`) runs `/usr/local/sbin/offsite-backup.sh`,
   which per destination does `restic init` (first run) → `restic backup <paths>` →
@@ -579,12 +581,13 @@ data to offsite repositories, encrypted and versioned. Current scope: unifi01
 ### Provisioning a host
 
 ```bash
-./scripts/offsite-backup.sh <host-ip> [--check]    # loads creds, runs playbooks/backup.yml
+./scripts/offsite-backup.sh <host-ip> <hostname> [--check]   # per-host config + repos
 ssh ansible@<host-ip> 'sudo /usr/local/sbin/offsite-backup.sh'   # first backup now
 ```
 
 The playbook (`ansible/playbooks/backup.yml`) holds the non-secret per-host
-config (paths, retention, schedule); the destinations/secrets arrive as extra vars.
+config (paths, retention, schedule) selected by `<hostname>`; the
+destinations/secrets arrive as extra vars. Repo folders are `backups/<hostname>`.
 
 ### Verifying / restoring
 

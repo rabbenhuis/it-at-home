@@ -1,0 +1,6 @@
+---
+- name: Provision MQTT broker (mosquitto)
+  hosts: all
+  become: true
+  roles:
+    - role: mqtt

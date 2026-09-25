@@ -76,6 +76,17 @@ locals {
   firewall_ntp_vlans   = [37, 70, 75, 80, 90, 95, 100, 115, 150]
   firewall_ntp_sources = [for id in local.firewall_ntp_vlans : module.cluster.vlans[id]]
 
+  # Known MQTT broker clients (mosquitto01): Home Assistant (Pi container until
+  # HA migrates, then haos01) and the future zigbee2mqtt container. Rendered
+  # into 'mqtt-client-sources'. Keeps port 1883 closed to unauthenticated IoT
+  # devices on the IoT VLANs.
+  firewall_mqtt_client_cidrs = [
+    { ip = "192.168.100.70", name = "Pi home-assistant (pre-migration)" },
+    { ip = "192.168.100.75", name = "mqtt-explorer (Pi)" },
+    { ip = "192.168.100.40", name = "haos01" },
+    { ip = "192.168.150.42", name = "zigbee01 (zigbee2mqtt)" },
+  ]
+
   # Internal hosts allowed to relay mail through the infra-core postfix relay.
   # Every VLAN subnet except the guest WLAN (142 must not relay) plus the
   # WireGuard overlay. Rendered into 'mail-relay-sources'.
@@ -165,6 +176,13 @@ locals {
       source = "+haos-iot-sources", comment = "Chromecast control (IoT 150/152)" },
       { type = "in", action = "ACCEPT", proto = "udp", dport = "1900",
       source = "+haos-iot-sources", comment = "SSDP (IoT 150/152)" },
+      { type = "in", action = "DROP", comment = "Deny other inbound" },
+    ]
+    mqtt = [
+      # MQTT broker (mosquitto): 1883 open only to the known broker clients
+      # (HA - Pi container/haos01 - and the future zigbee2mqtt container).
+      { type = "in", action = "ACCEPT", proto = "tcp", dport = "1883",
+      source = "+mqtt-client-sources", comment = "MQTT (broker clients)" },
       { type = "in", action = "DROP", comment = "Deny other inbound" },
     ]
   }

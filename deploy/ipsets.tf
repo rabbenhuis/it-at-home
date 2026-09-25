@@ -154,6 +154,23 @@ resource "proxmox_virtual_environment_firewall_ipset" "ntp_sources" {
   }
 }
 
+# Known MQTT broker clients (mosquitto01). Referenced from the mqtt role's
+# rule as source "+mqtt-client-sources".
+resource "proxmox_virtual_environment_firewall_ipset" "mqtt_client_sources" {
+  provider = proxmox.pve1
+
+  name    = "mqtt-client-sources"
+  comment = "MQTT broker clients (may connect to mosquitto01)"
+
+  dynamic "cidr" {
+    for_each = local.firewall_mqtt_client_cidrs
+    content {
+      name    = cidr.value.ip
+      comment = cidr.value.name
+    }
+  }
+}
+
 # Internal hosts allowed to relay mail through the infra-core postfix relay.
 # Referenced from the infra-core role's rule as source "+mail-relay-sources".
 resource "proxmox_virtual_environment_firewall_ipset" "mail_relay_sources" {

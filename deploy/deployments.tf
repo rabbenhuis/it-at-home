@@ -202,6 +202,24 @@ locals {
       backup        = "tier-2"
       description   = "Home Assistant OS - smart home hub (Managed by Terraform)"
     }
+    mosquitto01 = {
+      type           = "lxc"
+      target         = "pve1"
+      vlan_id        = 150
+      template_vmid  = 9000
+      vmid           = 401
+      cores          = 1
+      memory         = 512
+      disk_size      = 8
+      disk_datastore = "local-ssd"
+      ip             = "192.168.150.40/24"
+      on_boot        = true
+      startup        = { order = 30, up_delay = 15, down_delay = 60 }
+      unprivileged   = true
+      role           = "mqtt"
+      backup         = "tier-2"
+      description    = "MQTT broker (mosquitto) - IoT messaging (Managed by Terraform)"
+    }
     # web1 = {
     #   type          = "lxc"
     #   target        = "pve1"

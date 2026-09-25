@@ -1,0 +1,80 @@
+---
+- name: Fail if MQTT passwords are not provided
+  ansible.builtin.fail:
+    msg: >-
+      mqtt_password_hass / mqtt_password_zigbee2mqtt must be set (loaded from
+      bws by scripts/deploy-hosts.sh). Empty passwords would create unusable
+      broker users - refusing to apply.
+  when: mqtt_password_hass | length == 0 or mqtt_password_zigbee2mqtt | length == 0
+
+- name: Install mosquitto and clients
+  ansible.builtin.apt:
+    name:
+      - mosquitto
+      - mosquitto-clients
+    state: present
+    update_cache: true
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+
+# The passwd file is (re)generated only when a password changes, so re-running
+# this role never restarts the broker pointlessly. A root-only marker holds the
+# sha256 of the configured passwords; if it differs, the passwd file is rebuilt
+# (mosquitto_passwd -b writes a fresh hash) and mosquitto is restarted.
+- name: Record desired password hashes
+  ansible.builtin.copy:
+    content: "{{ mqtt_password_hass | hash('sha256') }}|{{ mqtt_password_zigbee2mqtt | hash('sha256') }}\n"
+    dest: /etc/mosquitto/.ansible-passwd-marker
+    mode: "0600"
+    owner: mosquitto
+    group: mosquitto
+  register: mqtt_passwd_marker
+  no_log: true
+
+- name: Recreate mosquitto passwd file on password change
+  ansible.builtin.shell: |
+    set -e
+    install -m 0600 -o mosquitto -g mosquitto /dev/null {{ mqtt_password_file }}
+    mosquitto_passwd -b {{ mqtt_password_file }} hass "{{ mqtt_password_hass }}"
+    mosquitto_passwd -b {{ mqtt_password_file }} zigbee2mqtt "{{ mqtt_password_zigbee2mqtt }}"
+  when: mqtt_passwd_marker.changed
+  no_log: true
+  notify: restart mosquitto
+
+- name: Secure mosquitto passwd file
+  ansible.builtin.file:
+    path: "{{ mqtt_password_file }}"
+    mode: "0600"
+    owner: mosquitto
+    group: mosquitto
+
+- name: Deploy mosquitto ACL file
+  ansible.builtin.template:
+    src: acl.j2
+    dest: "{{ mqtt_acl_file }}"
+    mode: "0644"
+    owner: mosquitto
+    group: mosquitto
+  notify: restart mosquitto
+
+- name: Deploy mosquitto configuration
+  ansible.builtin.template:
+    src: mosquitto.conf.j2
+    dest: /etc/mosquitto/mosquitto.conf
+    mode: "0644"
+    owner: root
+    group: root
+  notify: restart mosquitto
+
+- name: Enable and start mosquitto
+  ansible.builtin.systemd:
+    name: mosquitto
+    enabled: true
+    state: started
+    daemon_reload: true
+
+- name: Wait for mosquitto listener
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: "{{ mqtt_listener_port }}"
+    timeout: 60

@@ -64,6 +64,17 @@ if [[ -z "$POSTFIX_SMTP_PASSWORD" && -n "${BWS_ACCESS_TOKEN:-}" && -n "${BWS_PRO
   POSTFIX_SMTP_PASSWORD="$(bws_value POSTFIX_SMTP_PASSWORD 2>/dev/null || true)"
 fi
 
+# MQTT broker per-service passwords (mqtt role). From exported env vars or bws;
+# never committed. Passed to ansible as -e vars for the mqtt playbook.
+MOSQUITTO_PASSWORD_HASS="${MOSQUITTO_PASSWORD_HASS:-}"
+MOSQUITTO_PASSWORD_ZIGBEE2MQTT="${MOSQUITTO_PASSWORD_ZIGBEE2MQTT:-}"
+if [[ -z "$MOSQUITTO_PASSWORD_HASS" && -n "${BWS_ACCESS_TOKEN:-}" && -n "${BWS_PROJECT_ID:-}" ]]; then
+  MOSQUITTO_PASSWORD_HASS="$(bws_value MOSQUITTO_PASSWORD_HASS 2>/dev/null || true)"
+fi
+if [[ -z "$MOSQUITTO_PASSWORD_ZIGBEE2MQTT" && -n "${BWS_ACCESS_TOKEN:-}" && -n "${BWS_PROJECT_ID:-}" ]]; then
+  MOSQUITTO_PASSWORD_ZIGBEE2MQTT="$(bws_value MOSQUITTO_PASSWORD_ZIGBEE2MQTT 2>/dev/null || true)"
+fi
+
 log() { printf '\n\033[1;34m==>\033[0m %s\n' "$*"; }
 
 cd "$DEPLOY_DIR"
@@ -137,6 +148,16 @@ while IFS='|' read -r name type ip playbook; do
     fi
   fi
 
+  # The mqtt playbook (mosquitto broker) needs the per-service passwords from bws.
+  MQTT_EXTRA_ARGS=()
+  if [[ "$playbook" == "mqtt.yml" ]]; then
+    if [[ -n "$MOSQUITTO_PASSWORD_HASS" && -n "$MOSQUITTO_PASSWORD_ZIGBEE2MQTT" ]]; then
+      MQTT_EXTRA_ARGS+=(-e "mqtt_password_hass=$MOSQUITTO_PASSWORD_HASS" -e "mqtt_password_zigbee2mqtt=$MOSQUITTO_PASSWORD_ZIGBEE2MQTT")
+    else
+      echo "WARN: MOSQUITTO_PASSWORD_HASS/ZIGBEE2MQTT not set (env or bws); mosquitto users will render empty passwords" >&2
+    fi
+  fi
+
   log "Provisioning $name ($type, $ip) with $playbook as $user"
   ssh-keygen -R "$ip" >/dev/null 2>&1 || true
   # First boot runs firstboot.service (machine-id, SSH host keys, aideinit,
@@ -156,7 +177,7 @@ while IFS='|' read -r name type ip playbook; do
     echo "WARN: SSH to $ip did not become ready within ~15 min, skipping $name" >&2
     continue
   fi
-  (cd "$ROOT/ansible" && ~/.local/bin/ansible-playbook -i "${ip}," -u "$user" -b "${POSTFIX_EXTRA_ARGS[@]}" "playbooks/$playbook")
+  (cd "$ROOT/ansible" && ~/.local/bin/ansible-playbook -i "${ip}," -u "$user" -b "${POSTFIX_EXTRA_ARGS[@]}" "${MQTT_EXTRA_ARGS[@]}" "playbooks/$playbook")
 done < <(provision_plan)
 
 log "Done. Deployed hosts (see deploy/deployments.tf):"
